@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoAssur — Journal d'Audit & Chronologie de Sinistre</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e0ebff',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Styles spécifiques pour l'impression / Export PDF */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 12mm;
+            }
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11pt;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-break-inside-avoid {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-border {
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+            }
+            input, textarea, select {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                resize: none !important;
+                appearance: none !important;
+            }
+            .timeline-line {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- BARRE DE NAVIGATION & ACTIONS (Masquée à l'impression) -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-scale-balanced text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
+                        ChronoAssur 
+                        <span class="text-xs font-medium bg-slate-800 text-blue-300 px-2.5 py-0.5 rounded-full border border-slate-700">Dossier Stratégique</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Constructeur de chronologie factuelle & suivi des points d'arbitrage</p>
+                </div>
+            </div>
+
+            <!-- Boutons d'action globaux -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="toggleAdvicePanel()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Règles d'or & Conseils">
+                    <i class="fa-solid fa-lightbulb"></i> Conseils & Audit
+                </button>
+                
+                <button onclick="exportJSON()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Sauvegarder le fichier sur votre ordinateur">
+                    <i class="fa-solid fa-download"></i> Sauvegarder (.json)
+                </button>
+
+                <label class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer" title="Charger un dossier existant">
+                    <i class="fa-solid fa-upload"></i> Importer
+                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importJSON(event)">
+                </label>
+
+                <button onclick="openResetModal()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-red-950/60 text-red-300 rounded-lg border border-slate-700 transition flex items-center gap-1.5" title="Nouveau dossier ou réinitialiser">
+                    <i class="fa-solid fa-rotate-left"></i> Initialiser
+                </button>
+
+                <button onclick="window.print()" class="px-4 py-1.5 text-xs font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-lg shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> Imprimer / PDF Assureur
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- BANNIÈRE D'IMPRESSION OFFICIELLE (Visible uniquement en PDF/Impression) -->
+    <div class="hidden print-only max-w-7xl mx-auto w-full pt-2 pb-4 border-b-2 border-slate-800 mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold uppercase tracking-wider text-slate-900">Journal d'Audit Chronologique de Sinistre</h1>
+                <p class="text-sm text-slate-600">Document de synthèse factuelle, chiffrage et points d'arbitrage soumis à l'assureur</p>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                <p>Édité le : <span id="printDate" class="font-semibold text-slate-800"></span></p>
+                <p>Statut : Document contradictoire / Pièces numérotées</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANNEAU DE CONSEILS STRATÉGIQUES & CONFORMITÉ (Masqué par défaut ou repliable) -->
+    <section id="advicePanel" class="hidden no-print bg-amber-50/90 border-b border-amber-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-start mb-3">
+                <h2 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-600"></i>
+                    4 Règles d'Or pour faire gagner du temps au gestionnaire (et accélérer votre indemnisation)
+                </h2>
+                <button onclick="toggleAdvicePanel()" class="text-amber-700 hover:text-amber-900 text-sm">
+                    <i class="fa-solid fa-xmark"></i> Fermer
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs text-amber-900">
+                <div class="bg-white/80 p-3 rounded-lg border border-amber-200">
+                    <p class="font-bold mb-1">1. Zéro affect, 100% factuel</p>
+                    <p class="text-amber-800">Évitez les adjectifs émotionnels. Préférez <em>"Délai d'intervention de 6 jours"</em> à <em>"L'entreprise a mis un temps interminable à venir"</em>.</p>
+                </div>
+                <div class="bg-white/80 p-3 rounded-lg border border-amber-200">
+                    <p class="font-bold mb-1">2. Un fait = Une preuve (PJ)</p>
+                    <p class="text-amber-800">Un gestionnaire ne valide que ce qui est prouvé. Associez chaque ligne clé à une pièce jointe numérotée (`PJ-01`, `PJ-02`).</p>
+                </div>
+                <div class="bg-white/80 p-3 rounded-lg border border-amber-200">
+                    <p class="font-bold mb-1">3. Isolez vos questions</p>
+                    <p class="text-amber-800">Ne noyez pas vos questions dans un mail. Utilisez le champ <strong>"Question / Arbitrage"</strong> d'une étape pour la lister automatiquement en bas de dossier.</p>
+                </div>
+                <div class="bg-white/80 p-3 rounded-lg border border-amber-200">
+                    <p class="font-bold mb-1">4. Nommage strict du dossier ZIP</p>
+                    <p class="text-amber-800">Utilisez le bouton de copie du nom de PJ généré automatiquement (`PJ-01_2026-09-12_Nom.pdf`) pour renommer vos fichiers PDF.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- 1. EN-TÊTE DE SYNTHÈSE STRATÉGIQUE & KPIS -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 print-border print-break-inside-avoid">
+            <div class="flex flex-wrap justify-between items-center border-b border-slate-100 pb-3 mb-4 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-6 bg-brand-600 rounded-full no-print"></span>
+                    <h2 class="text-base font-bold text-slate-800 uppercase tracking-wide">1. Synthèse Stratégique du Dossier</h2>
+                </div>
+                <span id="saveStatus" class="text-xs text-emerald-600 font-medium flex items-center gap-1 no-print">
+                    <i class="fa-solid fa-check-circle"></i> Sauvegarde locale automatique
+                </span>
+            </div>
+
+            <!-- Grille de métadonnées éditables -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Référence Sinistre & Contrat</label>
+                    <input type="text" id="metaRef" oninput="saveHeaderData()" placeholder="Ex: Sinistre #2026-88492 / Contrat MRH-049" 
+                           class="w-full px-3 py-2 text-sm font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Parties Impliquées (Assuré / Tiers / Syndic)</label>
+                    <input type="text" id="metaParties" oninput="saveHeaderData()" placeholder="Ex: M. Dupont (Assuré) / Syndic ImmoPlus / Voisin 3e" 
+                           class="w-full px-3 py-2 text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Statut Actuel & Attente Prioritaire</label>
+                    <input type="text" id="metaStatus" oninput="saveHeaderData()" placeholder="Ex: En attente validation devis remise en état" 
+                           class="w-full px-3 py-2 text-sm font-medium text-amber-900 bg-amber-50/70 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition">
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Objet du sinistre (Résumé factuel en 1 ligne)</label>
+                    <input type="text" id="metaObject" oninput="saveHeaderData()" placeholder="Ex: Dégât des eaux consécutif à la rupture d'une colonne montante encastrée avec dommages au salon et télétravail impacté." 
+                           class="w-full px-3 py-2 text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+            </div>
+
+            <!-- Indicateurs Clés Automatiques (KPIs) -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">Enjeu Financier Cumulé</p>
+                        <p id="kpiTotalAmount" class="text-xl font-bold text-slate-900 mt-0.5">0,00 €</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-lg no-print">
+                        <i class="fa-solid fa-euro-sign"></i>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">Étapes & Faits</p>
+                        <p id="kpiEventsCount" class="text-xl font-bold text-slate-900 mt-0.5">0</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center text-lg no-print">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">Pièces Jointes (Preuves)</p>
+                        <p id="kpiAttachmentsCount" class="text-xl font-bold text-slate-900 mt-0.5">0</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg no-print">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </div>
+                </div>
+
+                <div class="bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-purple-800 uppercase">Questions en suspens</p>
+                        <p id="kpiPendingQuestions" class="text-xl font-bold text-purple-900 mt-0.5">0</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-purple-200 text-purple-800 flex items-center justify-center text-lg no-print">
+                        <i class="fa-solid fa-circle-question"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. MODULE QUESTIONS STRATÉGIQUES & POINTS D'ARBITRAGE -->
+        <section class="bg-white rounded-xl shadow-sm border border-purple-200 p-5 print-border print-break-inside-avoid">
+            <div class="flex flex-wrap justify-between items-center gap-3 pb-3 mb-4 border-b border-slate-100">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-6 bg-purple-600 rounded-full no-print"></span>
+                        <h2 class="text-base font-bold text-slate-800 uppercase tracking-wide">
+                            2. Points d'Arbitrage & Questions Soumises à l'Assureur / Expert
+                        </h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">Regroupe automatiquement les questions liées aux étapes de la timeline ainsi que vos questions générales sur le dossier.</p>
+                </div>
+                <button onclick="openQuestionModal()" class="no-print px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> Ajouter une question globale
+                </button>
+            </div>
+
+            <!-- Liste des questions (Timeline + Globales) -->
+            <div id="questionsContainer" class="space-y-2.5">
+                <!-- Injecté en JS -->
+            </div>
+        </section>
+
+        <!-- 3. CHRONOLOGIE FACTUELLE (TIMELINE & TABLEAU D'AUDIT) -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 print-border">
+            <!-- Barre d'outils de la Timeline -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-5 border-b border-slate-100">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-6 bg-brand-600 rounded-full no-print"></span>
+                        <h2 class="text-base font-bold text-slate-800 uppercase tracking-wide">3. Chronologie Détaillée des Événements & Preuves</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5 no-print">Insérez des étapes à n'importe quelle date : elles se reclassent automatiquement dans l'ordre chronologique.</p>
+                </div>
+
+                <!-- Contrôles et Bouton d'ajout (no-print) -->
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                    <!-- Filtre Catégorie -->
+                    <select id="filterCategory" onchange="renderAll()" class="text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="ALL">Toutes les catégories</option>
+                        <option value="SINISTRE">🔴 Fait générateur / Aggravation</option>
+                        <option value="TECHNIQUE">🔵 Mesure conservatoire / Technique</option>
+                        <option value="ADMIN">🟡 Administratif / Juridique</option>
+                        <option value="BLOCAGE">🟣 Question / Point de blocage</option>
+                        <option value="WITH_QUESTION">❓ Étapes avec question uniquement</option>
+                        <option value="WITH_AMOUNT">💶 Étapes avec coût financier</option>
+                    </select>
+
+                    <!-- Bouton Tri Chronologique / Antéchronologique -->
+                    <button onclick="toggleSortOrder()" id="sortBtn" class="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-down-1-9" id="sortIcon"></i>
+                        <span id="sortLabel">Ordre Chronologique (Ancien → Récent)</span>
+                    </button>
+
+                    <!-- Bouton Switch Vue (Cartes Timeline vs Tableau Compact) -->
+                    <button onclick="toggleViewMode()" id="viewModeBtn" class="px-3 py-2 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-table"></i>
+                        <span id="viewModeLabel">Vue Tableau</span>
+                    </button>
+
+                    <!-- Bouton Principal : Insérer une étape -->
+                    <button onclick="openStepModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus-circle"></i> Insérer une étape
+                    </button>
+                </div>
+            </div>
+
+            <!-- VUE 1 : TIMELINE VISUELLE INTERACTIVE -->
+            <div id="timelineCardsView" class="relative pl-4 sm:pl-6 space-y-4">
+                <!-- Barre verticale de timeline -->
+                <div class="timeline-line absolute left-6 sm:left-8 top-3 bottom-3 w-0.5 bg-slate-200"></div>
+                <div id="timelineCardsContainer" class="space-y-4">
+                    <!-- Injecté en JS -->
+                </div>
+            </div>
+
+            <!-- VUE 2 : TABLEAU D'AUDIT COMPACT (Activé au choix ou pour impression structurée) -->
+            <div id="timelineTableView" class="hidden overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 uppercase">
+                            <th class="py-3 px-3 w-32">Date & Heure</th>
+                            <th class="py-3 px-3 w-40">Catégorie</th>
+                            <th class="py-3 px-3">Fait / Action & Question éventuelle</th>
+                            <th class="py-3 px-3 w-36">Acteur / Tiers</th>
+                            <th class="py-3 px-3 w-32 text-right">Impact / Coût</th>
+                            <th class="py-3 px-3 w-44">Pièce Jointe (Preuve)</th>
+                            <th class="py-3 px-2 w-20 text-center no-print">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timelineTableBody" class="divide-y divide-slate-200 text-sm">
+                        <!-- Injecté en JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. INDEX RÉCAPITULATIF DES PIÈCES JOINTES (Pour le bordereau d'envoi) -->
+        <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 print-border print-break-inside-avoid">
+            <div class="flex flex-wrap justify-between items-center gap-2 pb-3 mb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-6 bg-emerald-600 rounded-full no-print"></span>
+                    <h2 class="text-base font-bold text-slate-800 uppercase tracking-wide">4. Bordereau des Pièces Jointes Référencées</h2>
+                </div>
+                <span class="text-xs text-slate-500 no-print">Cliquez sur un nom de fichier pour le copier et renommer vos PDF</span>
+            </div>
+            <div id="attachmentsBordereau" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                <!-- Injecté en JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALE : AJOUTER / ÉDITER UNE ÉTAPE DE LA TIMELINE -->
+    <div id="stepModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
+                <h3 id="stepModalTitle" class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-brand-600"></i>
+                    Insérer une étape dans la chronologie
+                </h3>
+                <button onclick="closeStepModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="stepForm" onsubmit="saveStep(event)" class="p-6 space-y-4">
+                <input type="hidden" id="stepId">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Date de l'événement *</label>
+                        <input type="date" id="stepDate" required
+                               class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Heure (Optionnel)</label>
+                        <input type="time" id="stepTime"
+                               class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Catégorie d'audit *</label>
+                        <select id="stepCategory" required
+                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="SINISTRE">🔴 Fait générateur / Sinistre</option>
+                            <option value="TECHNIQUE">🔵 Mesure conservatoire / Tech</option>
+                            <option value="ADMIN">🟡 Administratif / Juridique</option>
+                            <option value="BLOCAGE">🟣 Point de blocage / Relance</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-bold text-slate-700 uppercase">Fait ou Action (100% Factuel, sans ressenti) *</label>
+                        <span class="text-[11px] text-slate-400">Ex: "Intervention plombier pour recherche de fuite"</span>
+                    </div>
+                    <textarea id="stepFact" rows="3" required placeholder="Décrivez précisément le fait constaté, l'intervention réalisée ou la démarche effectuée..."
+                              class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Acteur / Tiers concerné *</label>
+                        <input type="text" id="stepActor" required placeholder="Ex: Assuré, Plombier X, Syndic..."
+                               class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Montant chiffré (€ TTC)</label>
+                        <input type="number" step="0.01" min="0" id="stepAmount" placeholder="Ex: 250.00"
+                               class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Impact matériel / Délai</label>
+                        <input type="text" id="stepImpact" placeholder="Ex: Plafond HS / Salon inutilisable"
+                               class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <!-- Bloc Pièce Jointe -->
+                <div class="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">N° Pièce Jointe (Preuve)</label>
+                        <input type="text" id="stepPjCode" placeholder="Ex: PJ-01"
+                               class="w-full px-3 py-1.5 text-sm bg-white border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-emerald-900 uppercase mb-1">Intitulé court de la preuve (Facture, Photo, Constat...)</label>
+                        <input type="text" id="stepPjName" placeholder="Ex: Facture recherche de fuite"
+                               class="w-full px-3 py-1.5 text-sm bg-white border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Bloc Stratégique : Question ou Point à clarifier sur cette étape -->
+                <div class="bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-purple-900 uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-question text-purple-600"></i>
+                            Question / Point d'arbitrage lié à cette étape (Optionnel)
+                        </label>
+                        <span class="text-[11px] text-purple-700">Sera listé dans la section 2</span>
+                    </div>
+                    <input type="text" id="stepQuestion" placeholder="Ex: Confirmez-vous la prise en charge à 100% de cette facture conservatoire (art. L121-1) ?"
+                           class="w-full px-3 py-1.5 text-sm bg-white border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div class="flex justify-end items-center gap-3 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeStepModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                        Annuler
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i> Enregistrer l'étape
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALE : AJOUTER / ÉDITER UNE QUESTION GLOBALE -->
+    <div id="questionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-purple-600"></i>
+                    Question ou Point d'Arbitrage Global
+                </h3>
+                <button onclick="closeQuestionModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="questionForm" onsubmit="saveGlobalQuestion(event)" class="p-6 space-y-4">
+                <input type="hidden" id="globalQId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Question posée à l'assureur ou à l'expert *</label>
+                    <textarea id="globalQText" rows="3" required placeholder="Ex: Quelle est la date retenue pour le passage de l'expert contradictoire ?"
+                              class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Statut</label>
+                    <select id="globalQStatus" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="PENDING">⏳ En attente de réponse</option>
+                        <option value="RESOLVED">✅ Réponse obtenue / Résolu</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Réponse obtenue / Note d'arbitrage (Optionnel)</label>
+                    <input type="text" id="globalQAnswer" placeholder="Ex: Accord écrit reçu par mail le 18/10"
+                           class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeQuestionModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">Annuler</button>
+                    <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow transition">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODALE : INITIALISER / VIDER LE DOSSIER (Remplace confirm()) -->
+    <div id="resetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center gap-3 text-slate-900">
+                <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-lg shrink-0">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold">Initialiser le dossier</h3>
+                    <p class="text-xs text-slate-500">Choisissez comment démarrer ou réinitialiser votre chronologie.</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Vous pouvez soit partir d'une <strong>page vierge</strong> pour saisir votre propre affaire, soit recharger le <strong>dossier d'exemple pré-rempli</strong> pour voir comment structurer vos preuves.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t border-slate-100">
+                <button onclick="closeResetModal()" class="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+                <button onclick="resetToDemo()" class="px-3 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg">Charger l'exemple</button>
+                <button onclick="resetToBlank()" class="px-3 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg">Dossier vierge</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-300 z-50 no-print">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">Action effectuée</span>
+    </div>
+
+    <!-- SCRIPT DE L'APPLICATION -->
+    <script>
+        const STORAGE_KEY = 'chronoassur_dossier_v1';
+
+        // Configuration visuelle des catégories
+        const CATEGORIES = {
+            SINISTRE: {
+                label: 'Fait générateur / Sinistre',
+                short: 'Sinistre',
+                dot: 'bg-red-500',
+                badge: 'bg-red-50 text-red-800 border-red-200',
+                icon: 'fa-triangle-exclamation text-red-600'
+            },
+            TECHNIQUE: {
+                label: 'Mesure conservatoire / Tech',
+                short: 'Technique',
+                dot: 'bg-blue-500',
+                badge: 'bg-blue-50 text-blue-800 border-blue-200',
+                icon: 'fa-screwdriver-wrench text-blue-600'
+            },
+            ADMIN: {
+                label: 'Administratif / Juridique',
+                short: 'Administratif',
+                dot: 'bg-amber-500',
+                badge: 'bg-amber-50 text-amber-900 border-amber-200',
+                icon: 'fa-file-signature text-amber-600'
+            },
+            BLOCAGE: {
+                label: 'Point de blocage / Relance',
+                short: 'Blocage / Relance',
+                dot: 'bg-purple-600',
+                badge: 'bg-purple-50 text-purple-900 border-purple-200',
+                icon: 'fa-bell text-purple-600'
+            }
+        };
+
+        // État de l'application
+        let appState = {
+            meta: {
+                ref: '',
+                parties: '',
+                status: '',
+                object: ''
+            },
+            steps: [],
+            globalQuestions: [],
+            ui: {
+                sortAsc: true, // true = Chronologique (Ancien -> Récent)
+                viewMode: 'CARDS' // 'CARDS' ou 'TABLE'
+            }
+        };
+
+        // Jeu de données réaliste par défaut pour que l'outil soit parlant immédiatement
+        function getDefaultDemoData() {
+            return {
+                meta: {
+                    ref: 'Sinistre #2026-94810 / Contrat MRH-774201',
+                    parties: 'M. Martin (Assuré) / Syndic GestiCopro / Entreprise AquaFuite',
+                    status: 'Attente validation du devis de remise en état (1 840 €) & remboursement facture recherche de fuite',
+                    object: 'Dégât des eaux par infiltration au plafond du séjour suite à une fuite sur canalisation encastrée en partie commune.'
+                },
+                steps: [
+                    {
+                        id: 'step-1',
+                        date: '2026-09-12',
+                        time: '08:30',
+                        category: 'SINISTRE',
+                        fact: 'Apparition d\'une auréole humide active (env. 1,5 m²) et goutte-à-goutte au plafond du salon. Coupure immédiate de l\'arrivée d\'eau privative (le goutte-à-goutte persiste malgré la coupure).',
+                        actor: 'Assuré',
+                        amount: 0,
+                        impact: 'Dégradation peinture plafond & parquet',
+                        pjCode: 'PJ-01',
+                        pjName: 'Photos-datées-plafond',
+                        question: '',
+                        questionResolved: false,
+                        questionAnswer: ''
+                    },
+                    {
+                        id: 'step-2',
+                        date: '2026-09-13',
+                        time: '14:00',
+                        category: 'TECHNIQUE',
+                        fact: 'Intervention en urgence de la société AquaFuite pour recherche de fuite non destructive par caméra thermique. Conclusion du rapport : fuite sur colonne montante encastrée (partie commune).',
+                        actor: 'Société AquaFuite',
+                        amount: 285.00,
+                        impact: 'Origine identifiée (hors privatif)',
+                        pjCode: 'PJ-02',
+                        pjName: 'Facture-et-Rapport-AquaFuite',
+                        question: 'Confirmez-vous le remboursement immédiat des 285,00 € TTC avancés au titre de la recherche de fuite ?',
+                        questionResolved: false,
+                        questionAnswer: ''
+                    },
+                    {
+                        id: 'step-3',
+                        date: '2026-09-15',
+                        time: '10:15',
+                        category: 'ADMIN',
+                        fact: 'Déclaration officielle du sinistre sur l\'espace client et transmission du constat amiable Dégât des Eaux contresigné par le syndic GestiCopro (réparation de la colonne effectuée le 14/09 par le syndic).',
+                        actor: 'Assuré & Syndic',
+                        amount: 0,
+                        impact: 'Ouverture dossier & fin de la fuite active',
+                        pjCode: 'PJ-03',
+                        pjName: 'Constat-Amiable-Signe-Syndic',
+                        question: '',
+                        questionResolved: false,
+                        questionAnswer: ''
+                    },
+                    {
+                        id: 'step-4',
+                        date: '2026-10-02',
+                        time: '11:00',
+                        category: 'BLOCAGE',
+                        fact: 'Transmission du devis de remise en état (assèchement, traitement anti-fongique et mise en peinture du plafond séjour) établi par l\'entreprise BatiPeint. Relance téléphonique le 12/10 sans retour à ce jour.',
+                        actor: 'Entreprise BatiPeint / Assureur',
+                        amount: 1840.00,
+                        impact: 'Travaux bloqués depuis 15 jours',
+                        pjCode: 'PJ-04',
+                        pjName: 'Devis-Remise-En-Etat-BatiPeint',
+                        question: 'Le montant du devis (1 840 € TTC) étant inférieur au seuil d\'expertise, pouvez-vous donner votre accord de prise en charge sur pièces sans passage d\'expert ?',
+                        questionResolved: false,
+                        questionAnswer: ''
+                    }
+                ],
+                globalQuestions: [
+                    {
+                        id: 'gq-1',
+                        text: 'Quelle est la franchise contractuelle applicable sachant que la responsabilité incombe à 100% à la copropriété (recours contre l\'assureur de l\'immeuble) ?',
+                        status: 'PENDING',
+                        answer: ''
+                    }
+                ],
+                ui: {
+                    sortAsc: true,
+                    viewMode: 'CARDS'
+                }
+            };
+        }
+
+        // Initialisation au chargement
+        window.onload = function () {
+            document.getElementById('printDate').textContent = new Date().toLocaleDateString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+            loadFromLocalStorage();
+            renderAll();
+        };
+
+        // Sauvegarde et chargement localStorage
+        function loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    appState = JSON.parse(raw);
+                } else {
+                    appState = getDefaultDemoData();
+                    saveToLocalStorage();
+                }
+            } catch (e) {
+                console.error('Erreur chargement localStorage:', e);
+                appState = getDefaultDemoData();
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                const statusEl = document.getElementById('saveStatus');
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="fa-solid fa-check-circle"></i> Sauvegardé à ' + new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                }
+            } catch (e) {
+                console.error('Erreur sauvegarde localStorage:', e);
+            }
+        }
+
+        // Sauvegarde de l'en-tête stratégique
+        function saveHeaderData() {
+            appState.meta.ref = document.getElementById('metaRef').value;
+            appState.meta.parties = document.getElementById('metaParties').value;
+            appState.meta.status = document.getElementById('metaStatus').value;
+            appState.meta.object = document.getElementById('metaObject').value;
+            saveToLocalStorage();
+        }
+
+        // Fonction de rendu général
+        function renderAll() {
+            // 1. Remplir l'en-tête
+            document.getElementById('metaRef').value = appState.meta.ref || '';
+            document.getElementById('metaParties').value = appState.meta.parties || '';
+            document.getElementById('metaStatus').value = appState.meta.status || '';
+            document.getElementById('metaObject').value = appState.meta.object || '';
+
+            // 2. Calculer les KPIs
+            const totalAmount = appState.steps.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
+            const attachmentsCount = appState.steps.filter(s => s.pjCode && s.pjCode.trim() !== '').length;
+            
+            const stepQuestionsPending = appState.steps.filter(s => s.question && s.question.trim() !== '' && !s.questionResolved).length;
+            const globalQuestionsPending = appState.globalQuestions.filter(q => q.status !== 'RESOLVED').length;
+            const totalPendingQuestions = stepQuestionsPending + globalQuestionsPending;
+
+            document.getElementById('kpiTotalAmount').textContent = formatCurrency(totalAmount);
+            document.getElementById('kpiEventsCount').textContent = appState.steps.length;
+            document.getElementById('kpiAttachmentsCount').textContent = attachmentsCount;
+            document.getElementById('kpiPendingQuestions').textContent = totalPendingQuestions;
+
+            // 3. Mettre à jour les boutons de tri et vue
+            updateSortAndViewUI();
+
+            // 4. Rendre les questions stratégiques
+            renderQuestions();
+
+            // 5. Rendre la timeline (Cartes & Tableau)
+            renderTimeline();
+
+            // 6. Rendre le bordereau des pièces jointes
+            renderBordereau();
+        }
+
+        function updateSortAndViewUI() {
+            const sortIcon = document.getElementById('sortIcon');
+            const sortLabel = document.getElementById('sortLabel');
+            if (appState.ui.sortAsc) {
+                sortIcon.className = 'fa-solid fa-arrow-down-1-9 text-brand-600';
+                sortLabel.textContent = 'Chronologique (Ancien → Récent)';
+            } else {
+                sortIcon.className = 'fa-solid fa-arrow-up-9-1 text-brand-600';
+                sortLabel.textContent = 'Antéchronologique (Récent → Ancien)';
+            }
+
+            const cardsView = document.getElementById('timelineCardsView');
+            const tableView = document.getElementById('timelineTableView');
+            const viewModeLabel = document.getElementById('viewModeLabel');
+            if (appState.ui.viewMode === 'TABLE') {
+                cardsView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                viewModeLabel.textContent = 'Vue Timeline';
+            } else {
+                cardsView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                viewModeLabel.textContent = 'Vue Tableau';
+            }
+        }
+
+        // Tri des étapes par Date et Heure
+        function getSortedAndFilteredSteps() {
+            const filter = document.getElementById('filterCategory').value;
+            
+            let filtered = appState.steps.filter(step => {
+                if (filter === 'ALL') return true;
+                if (filter === 'WITH_QUESTION') return step.question && step.question.trim() !== '';
+                if (filter === 'WITH_AMOUNT') return parseFloat(step.amount) > 0;
+                return step.category === filter;
+            });
+
+            filtered.sort((a, b) => {
+                const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+                const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+                return appState.ui.sortAsc ? dateA - dateB : dateB - dateA;
+            });
+
+            return filtered;
+        }
+
+        // Rendu des Questions (Section 2)
+        function renderQuestions() {
+            const container = document.getElementById('questionsContainer');
+            const stepQuestions = appState.steps
+                .filter(s => s.question && s.question.trim() !== '')
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            if (stepQuestions.length === 0 && appState.globalQuestions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200 text-xs text-slate-500">
+                        Aucune question en suspens. Vous pouvez ajouter une question lors de la saisie d'une étape ou cliquer sur "Ajouter une question globale".
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+
+            // 1. Questions issues d'une étape précise de la timeline
+            stepQuestions.forEach((step, idx) => {
+                const isResolved = !!step.questionResolved;
+                const statusBadge = isResolved
+                    ? `<span class="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 rounded-full">✅ Résolu</span>`
+                    : `<span class="px-2 py-0.5 text-[11px] font-semibold bg-purple-100 text-purple-800 rounded-full">⏳ En attente</span>`;
+
+                html += `
+                    <div class="p-3 rounded-lg border ${isResolved ? 'bg-slate-50 border-slate-200' : 'bg-purple-50/40 border-purple-200'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="space-y-1 flex-grow">
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${statusBadge}
+                                <span class="text-xs font-semibold text-slate-500">Lié à l'étape du ${formatDateFR(step.date)}</span>
+                                ${step.pjCode ? `<span class="text-[11px] font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">${escapeHtml(step.pjCode)}</span>` : ''}
+                            </div>
+                            <p class="text-sm font-semibold ${isResolved ? 'line-through text-slate-500' : 'text-slate-900'}">${escapeHtml(step.question)}</p>
+                            <div class="pt-1 flex items-center gap-2">
+                                <span class="text-xs font-medium text-slate-500 shrink-0">Réponse / Arbitrage :</span>
+                                <input type="text" value="${escapeHtml(step.questionAnswer || '')}" 
+                                       onchange="updateStepQuestionAnswer('${step.id}', this.value)"
+                                       placeholder="Saisir ici la réponse de l'assureur ou de l'expert..."
+                                       class="w-full text-xs px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-purple-500">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0 no-print">
+                            <button onclick="toggleStepQuestionStatus('${step.id}')" class="px-2.5 py-1 text-xs font-medium rounded border ${isResolved ? 'border-slate-300 text-slate-600 hover:bg-slate-100' : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}" title="Basculer le statut">
+                                ${isResolved ? 'Rouvrir' : 'Marquer résolu'}
+                            </button>
+                            <button onclick="openStepModal('${step.id}')" class="p-1.5 text-slate-400 hover:text-brand-600" title="Modifier l'étape">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 2. Questions globales du dossier
+            appState.globalQuestions.forEach((gq) => {
+                const isResolved = gq.status === 'RESOLVED';
+                const statusBadge = isResolved
+                    ? `<span class="px-2 py-0.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 rounded-full">✅ Résolu</span>`
+                    : `<span class="px-2 py-0.5 text-[11px] font-semibold bg-purple-100 text-purple-800 rounded-full">⏳ En attente</span>`;
+
+                html += `
+                    <div class="p-3 rounded-lg border ${isResolved ? 'bg-slate-50 border-slate-200' : 'bg-purple-50/40 border-purple-200'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div class="space-y-1 flex-grow">
+                            <div class="flex items-center gap-2">
+                                ${statusBadge}
+                                <span class="text-xs font-semibold text-purple-700">Question générale sur le dossier</span>
+                            </div>
+                            <p class="text-sm font-semibold ${isResolved ? 'line-through text-slate-500' : 'text-slate-900'}">${escapeHtml(gq.text)}</p>
+                            <div class="pt-1 flex items-center gap-2">
+                                <span class="text-xs font-medium text-slate-500 shrink-0">Réponse / Arbitrage :</span>
+                                <input type="text" value="${escapeHtml(gq.answer || '')}" 
+                                       onchange="updateGlobalQuestionAnswer('${gq.id}', this.value)"
+                                       placeholder="Saisir ici la réponse de l'assureur ou de l'expert..."
+                                       class="w-full text-xs px-2 py-1 bg-white border border-slate-200 rounded focus:outline-none focus:border-purple-500">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0 no-print">
+                            <button onclick="toggleGlobalQuestionStatus('${gq.id}')" class="px-2.5 py-1 text-xs font-medium rounded border ${isResolved ? 'border-slate-300 text-slate-600 hover:bg-slate-100' : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+                                ${isResolved ? 'Rouvrir' : 'Marquer résolu'}
+                            </button>
+                            <button onclick="openQuestionModal('${gq.id}')" class="p-1.5 text-slate-400 hover:text-purple-600" title="Éditer">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteGlobalQuestion('${gq.id}')" class="p-1.5 text-slate-400 hover:text-red-600" title="Supprimer">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Rendu de la Timeline (Cartes & Tableau)
+        function renderTimeline() {
+            const steps = getSortedAndFilteredSteps();
+            const cardsContainer = document.getElementById('timelineCardsContainer');
+            const tableBody = document.getElementById('timelineTableBody');
+
+            if (steps.length === 0) {
+                const emptyHtml = `
+                    <div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                        <p class="text-sm font-medium text-slate-600 mb-2">Aucune étape à afficher pour ce filtre.</p>
+                        <button onclick="openStepModal()" class="no-print px-4 py-2 bg-brand-600 text-white text-xs font-semibold rounded-lg shadow-xs hover:bg-brand-700 transition">
+                            + Insérer la première étape
+                        </button>
+                    </div>
+                `;
+                cardsContainer.innerHTML = emptyHtml;
+                tableBody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-500 text-xs">Aucune étape enregistrée</td></tr>`;
+                return;
+            }
+
+            let cardsHtml = '';
+            let tableHtml = '';
+
+            steps.forEach((step, index) => {
+                const cat = CATEGORIES[step.category] || CATEGORIES.ADMIN;
+                const amountVal = parseFloat(step.amount) || 0;
+                const formattedFilename = getFormattedPjFilename(step);
+
+                // Carte Timeline
+                cardsHtml += `
+                    <div class="relative pl-6 sm:pl-8 print-break-inside-avoid group">
+                        <!-- Pastille sur la ligne temporelle -->
+                        <div class="timeline-line absolute left-0 sm:left-0.5 top-4 w-4 h-4 rounded-full ${cat.dot} border-4 border-white shadow-xs"></div>
+
+                        <div class="bg-white rounded-xl border border-slate-200 hover:border-slate-300 p-4 shadow-2xs transition print-border">
+                            <!-- Ligne supérieure : Date, Catégorie, Acteur, Montant & Actions -->
+                            <div class="flex flex-wrap justify-between items-center gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md">
+                                        <i class="fa-regular fa-calendar mr-1 text-slate-500"></i>${formatDateFR(step.date)}
+                                        ${step.time ? `<span class="text-xs font-normal text-slate-600 ml-1">à ${step.time}</span>` : ''}
+                                    </span>
+                                    <span class="text-xs font-semibold px-2.5 py-1 rounded-md border ${cat.badge} flex items-center gap-1.5">
+                                        <i class="fa-solid ${cat.icon}"></i> ${cat.label}
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                                        <i class="fa-regular fa-user mr-1 text-slate-400"></i>${escapeHtml(step.actor)}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    ${amountVal > 0 ? `
+                                        <span class="text-sm font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+                                            ${formatCurrency(amountVal)}
+                                        </span>
+                                    ` : ''}
+
+                                    <!-- Actions d'édition et d'insertion rapide -->
+                                    <div class="flex items-center gap-1 no-print">
+                                        <button onclick="openStepModal(null, '${step.date}')" class="px-2 py-1 text-[11px] font-medium text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded transition" title="Insérer une étape à cette même date">
+                                            + Étape liée
+                                        </button>
+                                        <button onclick="openStepModal('${step.id}')" class="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-slate-100 rounded transition" title="Modifier">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button onclick="deleteStep('${step.id}')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition" title="Supprimer">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Corps : Fait factuel -->
+                            <p class="text-sm text-slate-800 leading-relaxed whitespace-pre-line">${escapeHtml(step.fact)}</p>
+
+                            <!-- Pied de carte : Impact, Pièce Jointe et Question éventuelle -->
+                            <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    ${step.impact ? `
+                                        <span class="text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+                                            <strong>Impact :</strong> ${escapeHtml(step.impact)}
+                                        </span>
+                                    ` : ''}
+
+                                    ${step.pjCode ? `
+                                        <button onclick="copyText('${escapeHtml(formattedFilename)}')" class="text-xs font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition" title="Cliquer pour copier le nom normalisé du fichier">
+                                            <i class="fa-solid fa-paperclip text-emerald-600"></i>
+                                            <span class="font-mono font-bold">${escapeHtml(step.pjCode)}</span>
+                                            ${step.pjName ? `<span>— ${escapeHtml(step.pjName)}</span>` : ''}
+                                            <i class="fa-regular fa-copy text-[10px] text-emerald-600 ml-1 no-print"></i>
+                                        </button>
+                                    ` : `
+                                        <span class="text-[11px] text-slate-400 italic no-print">Aucune pièce jointe associée</span>
+                                    `}
+                                </div>
+                            </div>
+
+                            ${step.question ? `
+                                <div class="mt-2.5 p-2.5 rounded-lg bg-purple-50 border border-purple-200 flex items-start gap-2">
+                                    <i class="fa-solid fa-circle-question text-purple-600 mt-0.5"></i>
+                                    <div class="text-xs text-purple-950 flex-grow">
+                                        <span class="font-bold uppercase text-purple-800">Point à clarifier : </span>
+                                        <span class="font-medium">${escapeHtml(step.question)}</span>
+                                        ${step.questionAnswer ? `<p class="mt-1 text-emerald-800 font-semibold">↳ Réponse : ${escapeHtml(step.questionAnswer)}</p>` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                // Ligne de Tableau Compact
+                tableHtml += `
+                    <tr class="hover:bg-slate-50/80 transition print-break-inside-avoid">
+                        <td class="py-3 px-3 align-top font-bold text-slate-900 whitespace-nowrap">
+                            ${formatDateFR(step.date)}
+                            ${step.time ? `<div class="text-xs font-normal text-slate-500">${step.time}</div>` : ''}
+                        </td>
+                        <td class="py-3 px-3 align-top">
+                            <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded border ${cat.badge}">
+                                ${cat.short}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 align-top space-y-1">
+                            <p class="text-slate-800 text-sm">${escapeHtml(step.fact)}</p>
+                            ${step.question ? `
+                                <div class="p-1.5 bg-purple-50 border border-purple-200 rounded text-xs text-purple-900">
+                                    <strong>❓ Question :</strong> ${escapeHtml(step.question)}
+                                    ${step.questionAnswer ? `<br><strong class="text-emerald-800">↳ Réponse :</strong> ${escapeHtml(step.questionAnswer)}` : ''}
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="py-3 px-3 align-top text-xs font-medium text-slate-700">${escapeHtml(step.actor)}</td>
+                        <td class="py-3 px-3 align-top text-right">
+                            ${amountVal > 0 ? `<div class="font-bold text-slate-900">${formatCurrency(amountVal)}</div>` : ''}
+                            ${step.impact ? `<div class="text-xs text-slate-500">${escapeHtml(step.impact)}</div>` : ''}
+                        </td>
+                        <td class="py-3 px-3 align-top">
+                            ${step.pjCode ? `
+                                <button onclick="copyText('${escapeHtml(formattedFilename)}')" class="text-left text-xs font-mono bg-emerald-50 text-emerald-900 px-2 py-1 rounded border border-emerald-200 hover:bg-emerald-100">
+                                    <strong>${escapeHtml(step.pjCode)}</strong> ${step.pjName ? `<span class="font-sans block text-[11px] text-emerald-700">${escapeHtml(step.pjName)}</span>` : ''}
+                                </button>
+                            ` : '<span class="text-xs text-slate-400">—</span>'}
+                        </td>
+                        <td class="py-3 px-2 align-top text-center no-print">
+                            <div class="flex justify-center gap-1">
+                                <button onclick="openStepModal('${step.id}')" class="p-1 text-slate-400 hover:text-brand-600"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteStep('${step.id}')" class="p-1 text-slate-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            cardsContainer.innerHTML = cardsHtml;
+            tableBody.innerHTML = tableHtml;
+        }
+
+        // Rendu du bordereau des Pièces Jointes (Section 4)
+        function renderBordereau() {
+            const container = document.getElementById('attachmentsBordereau');
+            const stepsWithPj = appState.steps
+                .filter(s => s.pjCode && s.pjCode.trim() !== '')
+                .sort((a, b) => a.pjCode.localeCompare(b.pjCode, undefined, { numeric: true }));
+
+            if (stepsWithPj.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 col-span-3">Aucune pièce jointe référencée pour le moment.</p>`;
+                return;
+            }
+
+            container.innerHTML = stepsWithPj.map(step => {
+                const filename = getFormattedPjFilename(step);
+                return `
+                    <div onclick="copyText('${escapeHtml(filename)}')" class="p-2.5 rounded-lg bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 flex items-center justify-between gap-2 cursor-pointer transition group">
+                        <div class="truncate">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">${escapeHtml(step.pjCode)}</span>
+                                <span class="text-xs font-semibold text-slate-800 truncate">${escapeHtml(step.pjName || 'Pièce justificative')}</span>
+                            </div>
+                            <p class="text-[11px] font-mono text-slate-500 truncate mt-1">${escapeHtml(filename)}</p>
+                        </div>
+                        <i class="fa-regular fa-copy text-slate-400 group-hover:text-emerald-600 text-xs shrink-0 no-print" title="Copier le nom de fichier"></i>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Génère un nom de fichier normalisé : PJ-01_2026-09-12_Nom-du-fichier.pdf
+        function getFormattedPjFilename(step) {
+            const code = (step.pjCode || 'PJ').trim().replace(/\s+/g, '-');
+            const date = step.date || 'Date';
+            const cleanName = (step.pjName || 'Document')
+                .trim()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_-]/g, '-')
+                .replace(/-+/g, '-');
+            return `${code}_${date}_${cleanName}.pdf`;
+        }
+
+        // Gestion de la modale d'étape (Ajout / Édition)
+        function openStepModal(stepId = null, prefillDate = null) {
+            const modal = document.getElementById('stepModal');
+            const title = document.getElementById('stepModalTitle');
+            document.getElementById('stepForm').reset();
+
+            if (stepId) {
+                const step = appState.steps.find(s => s.id === stepId);
+                if (!step) return;
+                title.innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-600"></i> Modifier l'étape du ${formatDateFR(step.date)}`;
+                document.getElementById('stepId').value = step.id;
+                document.getElementById('stepDate').value = step.date;
+                document.getElementById('stepTime').value = step.time || '';
+                document.getElementById('stepCategory').value = step.category;
+                document.getElementById('stepFact').value = step.fact;
+                document.getElementById('stepActor').value = step.actor;
+                document.getElementById('stepAmount').value = step.amount || '';
+                document.getElementById('stepImpact').value = step.impact || '';
+                document.getElementById('stepPjCode').value = step.pjCode || '';
+                document.getElementById('stepPjName').value = step.pjName || '';
+                document.getElementById('stepQuestion').value = step.question || '';
+            } else {
+                title.innerHTML = `<i class="fa-solid fa-calendar-plus text-brand-600"></i> Insérer une étape dans la chronologie`;
+                document.getElementById('stepId').value = '';
+                document.getElementById('stepDate').value = prefillDate || new Date().toISOString().split('T')[0];
+                
+                // Suggérer automatiquement le prochain numéro de PJ (ex: PJ-05)
+                const nextPjNum = appState.steps.filter(s => s.pjCode && s.pjCode.trim() !== '').length + 1;
+                document.getElementById('stepPjCode').value = `PJ-${String(nextPjNum).padStart(2, '0')}`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeStepModal() {
+            document.getElementById('stepModal').classList.add('hidden');
+        }
+
+        function saveStep(e) {
+            e.preventDefault();
+            const id = document.getElementById('stepId').value;
+            const existingStep = id ? appState.steps.find(s => s.id === id) : null;
+
+            const stepData = {
+                id: id || 'step-' + Date.now(),
+                date: document.getElementById('stepDate').value,
+                time: document.getElementById('stepTime').value,
+                category: document.getElementById('stepCategory').value,
+                fact: document.getElementById('stepFact').value.trim(),
+                actor: document.getElementById('stepActor').value.trim(),
+                amount: parseFloat(document.getElementById('stepAmount').value) || 0,
+                impact: document.getElementById('stepImpact').value.trim(),
+                pjCode: document.getElementById('stepPjCode').value.trim(),
+                pjName: document.getElementById('stepPjName').value.trim(),
+                question: document.getElementById('stepQuestion').value.trim(),
+                questionResolved: existingStep ? existingStep.questionResolved : false,
+                questionAnswer: existingStep ? existingStep.questionAnswer : ''
+            };
+
+            if (id) {
+                const idx = appState.steps.findIndex(s => s.id === id);
+                if (idx !== -1) appState.steps[idx] = stepData;
+                showToast('Étape mise à jour');
+            } else {
+                appState.steps.push(stepData);
+                showToast('Étape insérée et classée chronologiquement');
+            }
+
+            saveToLocalStorage();
+            closeStepModal();
+            renderAll();
+        }
+
+        function deleteStep(stepId) {
+            appState.steps = appState.steps.filter(s => s.id !== stepId);
+            saveToLocalStorage();
+            renderAll();
+            showToast('Étape supprimée');
+        }
+
+        // Gestion des Questions liées aux étapes
+        function toggleStepQuestionStatus(stepId) {
+            const step = appState.steps.find(s => s.id === stepId);
+            if (step) {
+                step.questionResolved = !step.questionResolved;
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        function updateStepQuestionAnswer(stepId, answerText) {
+            const step = appState.steps.find(s => s.id === stepId);
+            if (step) {
+                step.questionAnswer = answerText.trim();
+                saveToLocalStorage();
+                renderTimeline();
+                showToast('Réponse enregistrée');
+            }
+        }
+
+        // Gestion des Questions Globales
+        function openQuestionModal(qId = null) {
+            const modal = document.getElementById('questionModal');
+            document.getElementById('questionForm').reset();
+
+            if (qId) {
+                const gq = appState.globalQuestions.find(q => q.id === qId);
+                if (!gq) return;
+                document.getElementById('globalQId').value = gq.id;
+                document.getElementById('globalQText').value = gq.text;
+                document.getElementById('globalQStatus').value = gq.status;
+                document.getElementById('globalQAnswer').value = gq.answer || '';
+            } else {
+                document.getElementById('globalQId').value = '';
+                document.getElementById('globalQStatus').value = 'PENDING';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeQuestionModal() {
+            document.getElementById('questionModal').classList.add('hidden');
+        }
+
+        function saveGlobalQuestion(e) {
+            e.preventDefault();
+            const id = document.getElementById('globalQId').value;
+            const qData = {
+                id: id || 'gq-' + Date.now(),
+                text: document.getElementById('globalQText').value.trim(),
+                status: document.getElementById('globalQStatus').value,
+                answer: document.getElementById('globalQAnswer').value.trim()
+            };
+
+            if (id) {
+                const idx = appState.globalQuestions.findIndex(q => q.id === id);
+                if (idx !== -1) appState.globalQuestions[idx] = qData;
+            } else {
+                appState.globalQuestions.push(qData);
+            }
+
+            saveToLocalStorage();
+            closeQuestionModal();
+            renderAll();
+            showToast('Question enregistrée');
+        }
+
+        function toggleGlobalQuestionStatus(qId) {
+            const gq = appState.globalQuestions.find(q => q.id === qId);
+            if (gq) {
+                gq.status = gq.status === 'RESOLVED' ? 'PENDING' : 'RESOLVED';
+                saveToLocalStorage();
+                renderAll();
+            }
+        }
+
+        function updateGlobalQuestionAnswer(qId, answerText) {
+            const gq = appState.globalQuestions.find(q => q.id === qId);
+            if (gq) {
+                gq.answer = answerText.trim();
+                saveToLocalStorage();
+                showToast('Réponse enregistrée');
+            }
+        }
+
+        function deleteGlobalQuestion(qId) {
+            appState.globalQuestions = appState.globalQuestions.filter(q => q.id !== qId);
+            saveToLocalStorage();
+            renderAll();
+            showToast('Question supprimée');
+        }
+
+        // Actions d'affichage (Tri, Vue, Panneau Conseils)
+        function toggleSortOrder() {
+            appState.ui.sortAsc = !appState.ui.sortAsc;
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        function toggleViewMode() {
+            appState.ui.viewMode = appState.ui.viewMode === 'CARDS' ? 'TABLE' : 'CARDS';
+            saveToLocalStorage();
+            renderAll();
+        }
+
+        function toggleAdvicePanel() {
+            const panel = document.getElementById('advicePanel');
+            panel.classList.toggle('hidden');
+        }
+
+        // Modale d'initialisation (Dossier vierge ou Démo)
+        function openResetModal() {
+            document.getElementById('resetModal').classList.remove('hidden');
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.add('hidden');
+        }
+
+        function resetToBlank() {
+            appState = {
+                meta: { ref: '', parties: '', status: '', object: '' },
+                steps: [],
+                globalQuestions: [],
+                ui: { sortAsc: true, viewMode: 'CARDS' }
+            };
+            saveToLocalStorage();
+            closeResetModal();
+            renderAll();
+            showToast('Nouveau dossier vierge initialisé');
+        }
+
+        function resetToDemo() {
+            appState = getDefaultDemoData();
+            saveToLocalStorage();
+            closeResetModal();
+            renderAll();
+            showToast('Dossier d\'exemple chargé');
+        }
+
+        // Export & Import JSON
+        function exportJSON() {
+            const dataStr = JSON.stringify(appState, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const cleanRef = (appState.meta.ref || 'dossier-assurance').replace(/[^a-zA-Z0-9_-]/g, '_');
+            a.href = url;
+            a.download = `ChronoAssur_${cleanRef}_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Fichier de sauvegarde téléchargé');
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported && Array.isArray(imported.steps)) {
+                        appState = imported;
+                        saveToLocalStorage();
+                        renderAll();
+                        showToast('Dossier importé avec succès');
+                    } else {
+                        showToast('Format de fichier invalide');
+                    }
+                } catch (err) {
+                    showToast('Erreur lors de la lecture du fichier');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // Utilitaires (Formatage, Presse-papier, Toast)
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(val || 0);
+        }
+
+        function formatDateFR(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function copyText(text) {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast(`Copié : ${text}`);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 2600);
+        }
+    </script>
+</body>
+</html>

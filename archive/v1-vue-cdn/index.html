@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChronoAssur — Journal d'audit & chronologie de sinistre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+</head>
+<body>
+
+<div id="app" v-cloak class="app" @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="onDrop">
+
+  <!-- ============ BARRE SUPÉRIEURE ============ -->
+  <header class="topbar no-print">
+    <div class="topbar-inner">
+      <div class="logo">
+        <div class="logo-mark">⚖</div>
+        <div>
+          <h1>ChronoAssur</h1>
+          <p>Chronologie factuelle, pièces numérotées & points d'arbitrage</p>
+        </div>
+      </div>
+
+      <!-- Sélecteur de dossier -->
+      <div class="menu-wrap" v-if="dossier">
+        <button class="btn" @click="toggleMenu('dossiers')" title="Changer de dossier (base locale)">
+          📁 <b style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ dossier.name }}</b>
+          <span class="muted xsmall">{{ db.dossiers.length }} dossier{{ db.dossiers.length > 1 ? 's' : '' }}</span> ▾
+        </button>
+        <div class="menu left" v-if="menu === 'dossiers'" @click.stop>
+          <div class="menu-label">Dossiers enregistrés localement</div>
+          <button v-for="d in sortedDossiers" :key="d.id" class="menu-item" :class="{ active: d.id === db.activeId }" @click="selectDossier(d.id)">
+            <span class="ico">{{ d.id === db.activeId ? '●' : '○' }}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.name }}</span>
+              <span class="xsmall muted">{{ d.steps.length }} étapes · modifié {{ relativeTime(d.updatedAt) }}</span>
+            </span>
+          </button>
+          <div class="menu-sep"></div>
+          <button class="menu-item" @click="openNewDossier()"><span class="ico">＋</span> Nouveau dossier…</button>
+          <button class="menu-item" @click="duplicateDossier()"><span class="ico">⧉</span> Dupliquer ce dossier</button>
+          <button class="menu-item" @click="renameDossier()"><span class="ico">✎</span> Renommer…</button>
+          <button class="menu-item danger" @click="askDeleteDossier()"><span class="ico">🗑</span> Supprimer ce dossier</button>
+        </div>
+      </div>
+
+      <span class="grow"></span>
+
+      <span class="badge" :class="saveState === 'saved' ? 'badge-ok' : (saveState === 'error' ? 'badge-SINISTRE' : 'badge-warn')" :title="saveState === 'error' ? saveError : 'Enregistrement automatique dans le navigateur'">
+        {{ saveState === 'saved' ? '✔ Enregistré' : (saveState === 'error' ? '✕ Erreur de stockage' : '… Enregistrement') }}
+      </span>
+
+      <button class="btn btn-icon" @click="undo()" :disabled="!undoStack.length" title="Annuler (Ctrl+Z)">↶</button>
+      <button class="btn btn-icon" @click="redo()" :disabled="!redoStack.length" title="Rétablir (Ctrl+Maj+Z)">↷</button>
+
+      <!-- Menu fichier -->
+      <div class="menu-wrap">
+        <button class="btn" @click="toggleMenu('file')" title="Sauvegarde et import de fichiers">💾 Fichier ▾</button>
+        <div class="menu" v-if="menu === 'file'" @click.stop>
+          <div class="menu-label">Sauvegarder sur l'ordinateur</div>
+          <button class="menu-item" @click="exportDossier()"><span class="ico">⬇</span> Dossier courant (.json) <span class="grow"></span><span class="xsmall muted">Ctrl+S</span></button>
+          <button class="menu-item" @click="exportAll()"><span class="ico">⬇</span> Tous les dossiers (.json)</button>
+          <button class="menu-item" @click="exportCsv()"><span class="ico">⬇</span> Chronologie (.csv — Excel)</button>
+          <div class="menu-sep"></div>
+          <div class="menu-label">Charger depuis un fichier</div>
+          <button class="menu-item" @click="pickFile('merge')"><span class="ico">⬆</span> Importer (ajouter au stockage)</button>
+          <button class="menu-item" @click="pickFile('replace')"><span class="ico">⬆</span> Importer dans le dossier courant</button>
+          <div class="menu-sep"></div>
+          <button class="menu-item" @click="printDoc()"><span class="ico">🖨</span> Imprimer / PDF assureur <span class="grow"></span><span class="xsmall muted">Ctrl+P</span></button>
+          <button class="menu-item" @click="openMail('SYNTHESE')"><span class="ico">✉</span> Générer le courrier / mail</button>
+        </div>
+      </div>
+
+      <button class="btn btn-icon" @click="toggleTheme()" :title="theme === 'dark' ? 'Thème clair' : 'Thème sombre'">{{ theme === 'dark' ? '☀' : '☾' }}</button>
+      <button class="btn btn-icon" @click="showHelp = true" title="Aide & raccourcis (?)">?</button>
+      <input ref="fileInput" type="file" accept=".json,application/json" style="display:none" @change="onFilePicked">
+    </div>
+  </header>
+
+  <!-- ============ EN-TÊTE D'IMPRESSION ============ -->
+  <div class="print-only print-head" v-if="dossier">
+    <h1>Journal d'audit chronologique de sinistre</h1>
+    <p class="small">Document de synthèse factuelle, chiffrage et points d'arbitrage soumis à l'assureur — pièces numérotées.</p>
+    <p class="small muted">Édité le {{ printDate }} · Dossier : {{ dossier.meta.ref || dossier.name }}</p>
+  </div>
+
+  <main v-if="dossier">
+
+    <!-- ============ 1. SYNTHÈSE ============ -->
+    <section class="card card-pad">
+      <div class="sec-head">
+        <span class="sec-bar no-print"></span>
+        <h2>1. Synthèse du dossier</h2>
+        <span class="grow"></span>
+        <span class="badge no-print" v-if="dossier.meta.insurer">Assureur : {{ dossier.meta.insurer }}</span>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:11px">
+        <div class="field">
+          <label>Référence sinistre / contrat</label>
+          <input v-model="dossier.meta.ref" placeholder="Ex : Sinistre #2026-94810 / Contrat MRH-774201">
+        </div>
+        <div class="field">
+          <label>Parties concernées</label>
+          <input v-model="dossier.meta.parties" placeholder="Ex : M. Martin (assuré) / Syndic GestiCopro / Entreprise AquaFuite">
+        </div>
+        <div class="field">
+          <label>Assureur / gestionnaire</label>
+          <input v-model="dossier.meta.insurer" placeholder="Ex : Mutuelle X — M. Durand, gestionnaire">
+        </div>
+        <div class="field">
+          <label>Franchise contractuelle</label>
+          <input v-model="dossier.meta.deductible" placeholder="Ex : 150 € (dégât des eaux)">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Objet du sinistre (1 à 2 phrases factuelles)</label>
+          <textarea v-model="dossier.meta.object" rows="2" placeholder="Ex : Dégât des eaux par infiltration au plafond du séjour suite à une fuite sur canalisation encastrée en partie commune."></textarea>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>État / point de blocage actuel</label>
+          <input v-model="dossier.meta.status" placeholder="Ex : Attente de validation du devis de remise en état (1 840 €)">
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="k-label">Sommes engagées</div>
+          <div class="k-value">{{ money(kpi.total) }}</div>
+          <div class="k-sub">{{ kpi.withAmount }} ligne(s) chiffrée(s)</div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Événements</div>
+          <div class="k-value">{{ dossier.steps.length }}</div>
+          <div class="k-sub">{{ kpi.spanDays === null ? 'dossier vide' : 'sur ' + kpi.spanDays + ' jours' }}</div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Pièces jointes</div>
+          <div class="k-value">{{ kpi.pjCount }}</div>
+          <div class="k-sub">{{ kpi.missingPj }} fait(s) sans preuve</div>
+        </div>
+        <div class="kpi" :class="{ alert: kpi.openQuestions > 0 }">
+          <div class="k-label">Questions ouvertes</div>
+          <div class="k-value">{{ kpi.openQuestions }}</div>
+          <div class="k-sub">en attente de position écrite</div>
+        </div>
+        <div class="kpi" :class="{ alert: kpi.silenceDays !== null && kpi.silenceDays >= 15 }">
+          <div class="k-label">Dernier mouvement</div>
+          <div class="k-value">{{ kpi.silenceDays === null ? '—' : 'J+' + kpi.silenceDays }}</div>
+          <div class="k-sub">{{ kpi.silenceDays === null ? 'aucun événement' : (kpi.silenceDays >= 15 ? 'relance recommandée' : 'dossier actif') }}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2. CAPTURE RAPIDE ============ -->
+    <section class="card card-pad no-print">
+      <div class="sec-head">
+        <span class="sec-bar"></span>
+        <h2>2. Capture rapide</h2>
+        <span class="grow"></span>
+        <button class="btn btn-sm" @click="showPresets = true">📋 Étapes types</button>
+        <button class="btn btn-sm btn-primary" @click="openStep()">＋ Étape détaillée <span class="xsmall" style="opacity:.75">N</span></button>
+      </div>
+      <div class="capture">
+        <input ref="capture" v-model="quickLine" @keydown.enter="addQuick()" @keydown.esc="quickLine = ''"
+               placeholder="Ex : 12/09 14h30 intervention plombier recherche de fuite 285€ | AquaFuite | PJ Facture-AquaFuite">
+        <button class="btn btn-primary" @click="addQuick()" :disabled="!quickParsed">Ajouter ↵</button>
+      </div>
+      <div class="capture-preview" v-if="quickParsed">
+        <span class="badge" :class="'badge-' + quickParsed.category">{{ cat(quickParsed.category).short }}<template v-if="quickParsed.guessedCategory"> (déduit)</template></span>
+        <b>{{ fr(quickParsed.date) }}</b>
+        <span v-if="quickParsed.time">{{ quickParsed.time }}</span>
+        <span style="flex:1;min-width:120px">{{ quickParsed.fact }}</span>
+        <span class="badge" v-if="quickParsed.actor">👤 {{ quickParsed.actor }}</span>
+        <span class="badge badge-money" v-if="quickParsed.amount">{{ money(quickParsed.amount) }}</span>
+        <span class="badge" v-if="quickParsed.pjName">📎 {{ quickParsed.pjName }}</span>
+      </div>
+      <p class="capture-hint" v-else>
+        Tapez une ligne et appuyez sur <b>Entrée</b> : la date (<code>12/09</code>, <code>hier</code>, <code>14h30</code>), le montant (<code>285€</code>),
+        la catégorie (<code>tech:</code>, <code>admin:</code>, <code>relance:</code>) et la pièce jointe (<code>PJ Nom-du-fichier</code>) sont reconnus automatiquement.
+        Séparez acteur et pièce avec <code>|</code>. Raccourci : <b>/</b>
+      </p>
+    </section>
+
+    <!-- ============ 3. QUESTIONS & ARBITRAGES ============ -->
+    <section class="card card-pad">
+      <div class="sec-head">
+        <span class="sec-bar no-print" style="background:var(--violet)"></span>
+        <h2>3. Questions & points d'arbitrage</h2>
+        <span class="badge" :class="kpi.openQuestions ? 'badge-BLOCAGE' : 'badge-ok'">{{ kpi.openQuestions }} en attente</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm no-print" @click="openGlobalQuestion()">＋ Question générale</button>
+      </div>
+
+      <div class="stack" v-if="allQuestions.length">
+        <div v-for="q in allQuestions" :key="q.key" class="qbox" :class="{ done: q.resolved }">
+          <div class="row">
+            <span class="badge" :class="q.resolved ? 'badge-ok' : 'badge-BLOCAGE'">{{ q.resolved ? '✔ Traitée' : '● En attente' }}</span>
+            <span class="badge" v-if="q.date">{{ fr(q.date) }}</span>
+            <span class="badge" v-else>Question générale</span>
+            <span class="grow"></span>
+            <button class="btn btn-sm no-print" @click="toggleQuestion(q)">{{ q.resolved ? 'Rouvrir' : 'Marquer traitée' }}</button>
+            <button class="btn btn-sm btn-ghost no-print" v-if="q.stepId" @click="openStep(q.stepId)" title="Ouvrir l'étape liée">✎</button>
+            <button class="btn btn-sm btn-ghost btn-danger no-print" v-else @click="deleteGlobalQuestion(q.gqId)" title="Supprimer">🗑</button>
+          </div>
+          <p style="margin-top:7px" v-if="q.stepId">{{ q.text }}</p>
+          <input v-else class="input-flat" style="margin-top:7px;font-weight:550" :value="q.text" @input="setQuestionText(q, $event.target.value)"
+                 placeholder="Rédigez la question générale — ex : quelle franchise contractuelle s'applique ?">
+          <input class="input-flat" style="margin-top:8px" :value="q.answer" @input="setQuestionAnswer(q, $event.target.value)"
+                 placeholder="Réponse obtenue (date, canal, contenu) — ex : accord écrit reçu par mail le 18/10">
+        </div>
+      </div>
+      <div class="empty" v-else>
+        <b>Aucune question en suspens</b>
+        Isolez ici chaque point qui nécessite une position écrite de l'assureur : il les traitera plus vite qu'enfouis dans un mail.
+      </div>
+    </section>
+
+    <!-- ============ 4. CHRONOLOGIE ============ -->
+    <section class="card card-pad">
+      <div class="sec-head">
+        <span class="sec-bar no-print"></span>
+        <h2>4. Chronologie factuelle</h2>
+        <span class="badge">{{ visibleSteps.length }} / {{ dossier.steps.length }} affichés</span>
+        <span class="grow"></span>
+        <div class="row no-print">
+          <input v-model="search" ref="search" placeholder="Rechercher…" style="width:170px">
+          <button class="btn btn-sm" @click="dossier.ui.sortAsc = !dossier.ui.sortAsc; touch()">
+            {{ dossier.ui.sortAsc ? '↓ Ancien → récent' : '↑ Récent → ancien' }}
+          </button>
+          <button class="btn btn-sm" @click="dossier.ui.viewMode = dossier.ui.viewMode === 'CARDS' ? 'TABLE' : 'CARDS'; touch()">
+            {{ dossier.ui.viewMode === 'CARDS' ? '▦ Vue tableau' : '☰ Vue timeline' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="row no-print" style="margin-bottom:14px">
+        <button class="chip" :class="{ on: filter === 'ALL' }" @click="filter = 'ALL'">Toutes ({{ dossier.steps.length }})</button>
+        <button v-for="c in catOrder" :key="c" class="chip" :class="{ on: filter === c }" @click="filter = c">
+          {{ cat(c).icon }} {{ cat(c).short }} ({{ countByCat[c] || 0 }})
+        </button>
+        <span class="grow"></span>
+        <button class="chip" :class="{ on: onlyOpenQ }" @click="onlyOpenQ = !onlyOpenQ">● Questions ouvertes</button>
+        <button class="chip" :class="{ on: onlyNoPj }" @click="onlyNoPj = !onlyNoPj">📎 Sans pièce jointe</button>
+      </div>
+
+      <!-- Vue timeline -->
+      <div class="timeline" v-if="dossier.ui.viewMode === 'CARDS' && visibleSteps.length">
+        <div class="tl-item" v-for="(s, i) in visibleSteps" :key="s.id">
+          <span class="tl-dot" :class="'dot-' + s.category"></span>
+          <div class="gap-note" v-if="gapBefore(i) !== null" :class="{ hot: gapBefore(i) >= 15 }">
+            ⟡ {{ gapBefore(i) }} jour{{ gapBefore(i) > 1 ? 's' : '' }} d'écart<template v-if="gapBefore(i) >= 15"> — délai à justifier ou à opposer</template>
+          </div>
+          <article class="step" :class="{ 'is-open-q': s.question && !s.questionResolved }">
+            <div class="step-top">
+              <span class="step-date">{{ fr(s.date) }}</span>
+              <span class="muted xsmall" v-if="s.time">{{ s.time }}</span>
+              <span class="badge" :class="'badge-' + s.category">{{ cat(s.category).icon }} {{ cat(s.category).short }}</span>
+              <span class="badge" v-if="s.actor">👤 {{ s.actor }}</span>
+              <span class="badge badge-money" v-if="num(s.amount)">{{ money(s.amount) }}</span>
+              <span class="step-acts no-print">
+                <button class="btn btn-sm btn-ghost" @click="openStep(s.id)" title="Modifier">✎</button>
+                <button class="btn btn-sm btn-ghost" @click="duplicateStep(s.id)" title="Dupliquer">⧉</button>
+                <button class="btn btn-sm btn-ghost" @click="insertAfter(s)" title="Insérer une étape juste après">＋</button>
+                <button class="btn btn-sm btn-ghost btn-danger" @click="askDeleteStep(s.id)" title="Supprimer">🗑</button>
+              </span>
+            </div>
+            <p class="step-fact">{{ s.fact }}</p>
+            <div class="step-foot">
+              <span class="badge" v-if="s.impact">⇢ {{ s.impact }}</span>
+              <span class="pj-tag" v-if="s.pjCode || s.pjName" @click="copy(pjName(s), 'Nom de fichier copié : ' + pjName(s))" :title="'Cliquer pour copier : ' + pjName(s)">
+                📎 {{ s.pjCode || 'PJ' }} · {{ s.pjName || 'document' }} ⧉
+              </span>
+              <span class="badge badge-warn no-print" v-else>Aucune preuve rattachée</span>
+            </div>
+            <div class="qbox" v-if="s.question" :class="{ done: s.questionResolved }">
+              <div class="row">
+                <span class="badge" :class="s.questionResolved ? 'badge-ok' : 'badge-BLOCAGE'">{{ s.questionResolved ? '✔ Traitée' : '● Question en attente' }}</span>
+                <span class="grow"></span>
+                <button class="btn btn-sm no-print" @click="snapshot(); s.questionResolved = !s.questionResolved; touch()">{{ s.questionResolved ? 'Rouvrir' : 'Marquer traitée' }}</button>
+              </div>
+              <p style="margin-top:7px">{{ s.question }}</p>
+              <input class="input-flat" style="margin-top:8px" v-model="s.questionAnswer" @change="touch()" placeholder="Réponse obtenue (date, canal, contenu)">
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- Vue tableau -->
+      <div class="tbl-wrap" v-else-if="visibleSteps.length">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Catégorie</th><th>Fait constaté</th><th>Acteur</th>
+              <th class="num">Montant</th><th>Impact</th><th>PJ</th><th class="no-print"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in visibleSteps" :key="s.id">
+              <td class="nowrap">{{ fr(s.date) }}<br><span class="xsmall muted">{{ s.time }}</span></td>
+              <td><span class="badge" :class="'badge-' + s.category">{{ cat(s.category).short }}</span></td>
+              <td style="min-width:260px">
+                {{ s.fact }}
+                <div class="xsmall" style="color:var(--violet);margin-top:4px" v-if="s.question && !s.questionResolved">● {{ s.question }}</div>
+              </td>
+              <td>{{ s.actor }}</td>
+              <td class="num">{{ num(s.amount) ? money(s.amount) : '—' }}</td>
+              <td>{{ s.impact }}</td>
+              <td class="nowrap">{{ s.pjCode || '—' }}</td>
+              <td class="no-print nowrap">
+                <button class="btn btn-sm btn-ghost" @click="openStep(s.id)">✎</button>
+                <button class="btn btn-sm btn-ghost btn-danger" @click="askDeleteStep(s.id)">🗑</button>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align:right;font-weight:650">Total chiffré</td>
+              <td class="num" style="font-weight:700">{{ money(kpi.total) }}</td>
+              <td colspan="3"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="empty" v-else>
+        <b>{{ dossier.steps.length ? 'Aucune étape ne correspond aux filtres' : 'La chronologie est vide' }}</b>
+        <template v-if="dossier.steps.length">Réinitialisez la recherche ou les filtres pour tout revoir.</template>
+        <template v-else>Utilisez la capture rapide ci-dessus, ou partez d'une <a href="#" @click.prevent="showPresets = true">étape type</a>.</template>
+      </div>
+    </section>
+
+    <!-- ============ 5. BORDEREAU DES PIÈCES ============ -->
+    <section class="card card-pad">
+      <div class="sec-head">
+        <span class="sec-bar no-print" style="background:var(--green)"></span>
+        <h2>5. Bordereau des pièces jointes</h2>
+        <span class="badge">{{ pjSteps.length }} pièce{{ pjSteps.length > 1 ? 's' : '' }}</span>
+        <span class="grow"></span>
+        <div class="row no-print">
+          <button class="btn btn-sm" @click="renumberPj()" title="Renuméroter PJ-01, PJ-02… dans l'ordre chronologique">↻ Renuméroter</button>
+          <button class="btn btn-sm" @click="copyBordereau()">⧉ Copier le bordereau</button>
+        </div>
+      </div>
+      <div class="bordereau" v-if="pjSteps.length">
+        <div class="pj-card" v-for="s in pjSteps" :key="s.id">
+          <span class="badge badge-ECHEANCE nowrap">{{ s.pjCode || 'PJ' }}</span>
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:600">{{ s.pjName || 'Document' }}</div>
+            <div class="mono">{{ pjName(s) }}</div>
+          </div>
+          <button class="btn btn-sm btn-ghost no-print" @click="copy(pjName(s), 'Nom de fichier copié')" title="Copier le nom de fichier">⧉</button>
+        </div>
+      </div>
+      <div class="empty" v-else>
+        <b>Aucune pièce numérotée</b>
+        Un gestionnaire ne valide que ce qui est prouvé : rattachez une pièce (PJ-01, PJ-02…) à chaque fait clé.
+      </div>
+      <p class="small muted" style="margin-top:11px">
+        Renommez vos fichiers avec le nom généré ci-dessus : l'assureur retrouve immédiatement la pièce citée dans la chronologie.
+      </p>
+    </section>
+
+    <!-- ============ PIED DE PAGE IMPRESSION ============ -->
+    <div class="print-only small muted" style="border-top:1px solid #b9c3d3;padding-top:8px">
+      Document établi par l'assuré — chronologie factuelle, sans appréciation. Total des sommes engagées : {{ money(kpi.total) }} ·
+      {{ pjSteps.length }} pièce(s) jointe(s) · {{ kpi.openQuestions }} point(s) d'arbitrage en attente de réponse écrite.
+    </div>
+  </main>
+
+  <!-- ============ TIROIR : ÉDITION D'UNE ÉTAPE ============ -->
+  <div class="scrim no-print" v-if="editing" @click.self="closeStep()">
+    <div class="drawer" @keydown.ctrl.enter="saveStep()">
+      <div class="dlg-head">
+        <h3>{{ editingIsNew ? 'Nouvelle étape' : 'Modifier l\'étape' }}</h3>
+        <span class="grow"></span>
+        <button class="btn btn-ghost btn-icon" @click="closeStep()" title="Fermer (Échap)">✕</button>
+      </div>
+      <div class="dlg-body">
+        <div class="grid-3">
+          <div class="field">
+            <label>Date *</label>
+            <input type="date" v-model="editing.date">
+          </div>
+          <div class="field">
+            <label>Heure</label>
+            <input type="time" v-model="editing.time">
+          </div>
+          <div class="field">
+            <label>Catégorie *</label>
+            <select v-model="editing.category">
+              <option v-for="c in catOrder" :key="c" :value="c">{{ cat(c).label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Fait constaté — factuel, sans adjectif émotionnel *</label>
+          <textarea v-model="editing.fact" rows="4" ref="factField"
+                    placeholder="Ex : Intervention d'AquaFuite pour recherche de fuite par caméra thermique. Conclusion du rapport : fuite sur colonne montante encastrée (partie commune)."></textarea>
+          <span class="xsmall muted">Préférez « délai d'intervention de 6 jours » à « ils ont mis un temps interminable ».</span>
+        </div>
+        <div class="grid-3">
+          <div class="field">
+            <label>Acteur / intervenant</label>
+            <input v-model="editing.actor" list="actors" placeholder="Ex : Assuré, Syndic, Expert…">
+            <datalist id="actors"><option v-for="a in knownActors" :key="a" :value="a"></option></datalist>
+          </div>
+          <div class="field">
+            <label>Montant engagé (€)</label>
+            <input type="number" step="0.01" min="0" v-model.number="editing.amount" placeholder="0,00">
+          </div>
+          <div class="field">
+            <label>Impact / conséquence</label>
+            <input v-model="editing.impact" placeholder="Ex : Salon inutilisable">
+          </div>
+        </div>
+        <div class="card card-pad" style="background:var(--surface-2)">
+          <div class="row" style="margin-bottom:9px">
+            <b class="small">📎 Pièce justificative</b>
+            <span class="grow"></span>
+            <button class="btn btn-sm" @click="suggestPj()">Numéro suivant</button>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>Code</label>
+              <input v-model="editing.pjCode" placeholder="PJ-01">
+            </div>
+            <div class="field">
+              <label>Nom de la pièce</label>
+              <input v-model="editing.pjName" placeholder="Facture recherche de fuite">
+            </div>
+          </div>
+          <div class="row small mono" style="margin-top:9px" v-if="editing.pjCode || editing.pjName">
+            {{ pjName(editing) }}
+            <button class="btn btn-sm btn-ghost" @click="copy(pjName(editing), 'Nom de fichier copié')">⧉ copier</button>
+          </div>
+        </div>
+        <div class="card card-pad" style="background:var(--violet-soft);border-color:color-mix(in srgb, var(--violet) 25%, transparent)">
+          <b class="small">● Question / point d'arbitrage lié à cette étape</b>
+          <div class="field" style="margin-top:9px">
+            <input v-model="editing.question" placeholder="Ex : Confirmez-vous le remboursement des 285 € avancés au titre de la recherche de fuite ?">
+            <span class="xsmall muted">Remonte automatiquement dans la section « Questions & points d'arbitrage » et dans le courrier généré.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-primary" @click="saveStep()">Enregistrer <span class="xsmall" style="opacity:.75">Ctrl+↵</span></button>
+        <button class="btn" @click="closeStep()">Annuler</button>
+        <span class="grow"></span>
+        <button class="btn btn-danger" v-if="!editingIsNew" @click="askDeleteStep(editing.id)">🗑 Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : ÉTAPES TYPES ============ -->
+  <div class="scrim no-print" v-if="showPresets" @click.self="showPresets = false">
+    <div class="modal">
+      <div class="dlg-head">
+        <h3>Étapes types</h3>
+        <span class="muted small">insertion en un clic, à la date du jour</span>
+        <span class="grow"></span>
+        <button class="btn btn-ghost btn-icon" @click="showPresets = false">✕</button>
+      </div>
+      <div class="dlg-body">
+        <div class="preset-list">
+          <button class="preset" v-for="(p, i) in presets" :key="i" @click="usePreset(p)">
+            <span class="row" style="align-items:flex-start;flex-wrap:nowrap;gap:12px">
+              <b style="flex:1;min-width:0">{{ p.fact }}</b>
+              <span class="badge" :class="'badge-' + p.category" style="flex:none">{{ cat(p.category).short }}</span>
+            </span>
+            <span v-if="p.actor">Acteur proposé : {{ p.actor }}</span>
+            <span v-if="p.question"> · question d'arbitrage incluse</span>
+          </button>
+        </div>
+      </div>
+      <div class="dlg-foot">
+        <span class="small muted">Les crochets <code>[…]</code> sont à compléter : l'étape s'ouvre pour édition immédiate.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : NOUVEAU DOSSIER ============ -->
+  <div class="scrim no-print" v-if="showNew" @click.self="showNew = false">
+    <div class="modal">
+      <div class="dlg-head">
+        <h3>Nouveau dossier</h3>
+        <span class="grow"></span>
+        <button class="btn btn-ghost btn-icon" @click="showNew = false">✕</button>
+      </div>
+      <div class="dlg-body">
+        <div class="field">
+          <label>Nom du dossier</label>
+          <input v-model="newName" ref="newNameField" placeholder="Ex : DDE séjour — sinistre 2026-94810" @keydown.enter="createDossier()">
+        </div>
+        <div class="field">
+          <label>Partir d'un modèle de sinistre (pré-remplit la chronologie)</label>
+          <div class="preset-list">
+            <button class="preset" v-for="t in types" :key="t.id" :class="{ on: newType === t.id }"
+                    :style="newType === t.id ? 'border-color:var(--brand);background:var(--brand-soft)' : ''" @click="newType = t.id">
+              <b>{{ t.name }}</b>
+              <span>{{ t.steps.length ? t.steps.length + ' étapes pré-rédigées à ajuster' : 'aucune étape — à construire librement' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-primary" @click="createDossier()">Créer le dossier</button>
+        <button class="btn" @click="showNew = false">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : COURRIER GÉNÉRÉ ============ -->
+  <div class="scrim no-print" v-if="mailText !== null" @click.self="mailText = null">
+    <div class="modal" style="width:min(820px,100%)">
+      <div class="dlg-head">
+        <h3>Courrier / mail prêt à envoyer</h3>
+        <span class="grow"></span>
+        <button class="btn btn-sm" :class="{ 'btn-primary': mailKind === 'SYNTHESE' }" @click="openMail('SYNTHESE')">Synthèse</button>
+        <button class="btn btn-sm" :class="{ 'btn-primary': mailKind === 'RELANCE' }" @click="openMail('RELANCE')">Relance</button>
+        <button class="btn btn-ghost btn-icon" @click="mailText = null">✕</button>
+      </div>
+      <div class="dlg-body">
+        <textarea class="mail-out" v-model="mailText"></textarea>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-primary" @click="copy(mailText, 'Courrier copié — collez-le dans votre messagerie')">⧉ Copier</button>
+        <button class="btn" @click="downloadMail()">⬇ Télécharger (.txt)</button>
+        <span class="grow"></span>
+        <span class="small muted">Relisez et complétez les champs entre crochets avant envoi.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : CONFIRMATION ============ -->
+  <div class="scrim no-print" v-if="confirmBox" @click.self="confirmBox = null">
+    <div class="modal" style="width:min(460px,100%)">
+      <div class="dlg-head"><h3>{{ confirmBox.title }}</h3></div>
+      <div class="dlg-body"><p style="margin:0">{{ confirmBox.message }}</p></div>
+      <div class="dlg-foot">
+        <button class="btn btn-danger" @click="runConfirm()">{{ confirmBox.ok }}</button>
+        <button class="btn" @click="confirmBox = null">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODALE : AIDE ============ -->
+  <div class="scrim no-print" v-if="showHelp" @click.self="showHelp = false">
+    <div class="modal">
+      <div class="dlg-head">
+        <h3>Aide, méthode & raccourcis</h3>
+        <span class="grow"></span>
+        <button class="btn btn-ghost btn-icon" @click="showHelp = false">✕</button>
+      </div>
+      <div class="dlg-body">
+        <div>
+          <b class="small">4 règles d'or pour accélérer l'indemnisation</b>
+          <ol class="small" style="margin:8px 0 0;padding-left:18px;line-height:1.75">
+            <li><b>Zéro affect, 100 % factuel.</b> « Délai d'intervention de 6 jours » plutôt que « un temps interminable ».</li>
+            <li><b>Un fait = une preuve.</b> Chaque ligne clé porte une pièce numérotée (PJ-01, PJ-02…).</li>
+            <li><b>Isolez vos questions.</b> Une question listée à part obtient une réponse écrite ; noyée dans un mail, elle est ignorée.</li>
+            <li><b>Nommage strict des fichiers.</b> Copiez le nom généré (<code>PJ-01_2026-09-12_Nom.pdf</code>) pour renommer vos PDF.</li>
+          </ol>
+        </div>
+        <div>
+          <b class="small">Raccourcis clavier</b>
+          <div class="grid-2 small" style="margin-top:8px">
+            <div><kbd>N</kbd> nouvelle étape détaillée</div>
+            <div><kbd>/</kbd> capture rapide</div>
+            <div><kbd>F</kbd> rechercher</div>
+            <div><kbd>Ctrl</kbd>+<kbd>S</kbd> sauvegarder le fichier .json</div>
+            <div><kbd>Ctrl</kbd>+<kbd>Z</kbd> annuler · <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd> rétablir</div>
+            <div><kbd>Ctrl</kbd>+<kbd>P</kbd> imprimer / PDF</div>
+            <div><kbd>Ctrl</kbd>+<kbd>↵</kbd> enregistrer l'étape ouverte</div>
+            <div><kbd>Échap</kbd> fermer · <kbd>?</kbd> cette aide</div>
+          </div>
+        </div>
+        <div>
+          <b class="small">Où sont mes données ?</b>
+          <p class="small muted" style="margin:6px 0 0">
+            Tout est stocké dans <b>votre navigateur</b> (localStorage, clé <code>chronoassur_db_v2</code>) : rien n'est envoyé sur internet.
+            Vider les données du navigateur efface les dossiers — pensez à <b>Fichier ▸ Sauvegarder (.json)</b> régulièrement.
+            Un fichier .json peut être déposé n'importe où sur la page pour être rechargé.
+          </p>
+        </div>
+      </div>
+      <div class="dlg-foot">
+        <button class="btn btn-primary" @click="showHelp = false">Compris</button>
+        <span class="grow"></span>
+        <span class="small muted">Version Vue 3 · l'ancienne page est conservée dans <code>archive/</code>.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ZONE DE DÉPÔT ============ -->
+  <div class="dropzone" v-if="dragging">⬇ Déposez un fichier .json ChronoAssur pour l'importer</div>
+
+  <!-- ============ TOASTS ============ -->
+  <div class="toasts no-print">
+    <div class="toast" v-for="t in toasts" :key="t.id" :class="{ err: t.err }">{{ t.msg }}</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.4.21/vue.global.prod.min.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
