@@ -29,6 +29,13 @@ async function copyOne (step) {
   ui.toast(ok ? 'Nom de fichier copié' : 'Copie impossible', { type: ok ? 'info' : 'error' })
 }
 
+/** Retire la pièce de l'étape (l'étape elle-même reste dans la chronologie). */
+function detach (step) {
+  const code = step.pjCode || 'la pièce'
+  store.detachAttachment(step.id)
+  ui.toast(`${code} détachée de l'étape — Ctrl+Z pour annuler`)
+}
+
 async function copyAll () {
   if (!attachments.value.length) {
     ui.toast('Aucune pièce à copier', { type: 'error' })
@@ -72,13 +79,20 @@ async function copyAll () {
       >
         <template #item="{ element }">
           <div class="pj-card">
-            <button class="drag-handle no-print" title="Glisser pour renuméroter">⠿</button>
-            <span class="badge badge-ECHEANCE nowrap">{{ element.pjCode || 'PJ' }}</span>
-            <div class="pj-main">
-              <div class="pj-title">{{ element.pjName || 'Document' }}</div>
-              <div class="mono">{{ pjFilename(element) }}</div>
+            <div class="pj-head">
+              <button class="drag-handle no-print" title="Glisser pour renuméroter">⠿</button>
+              <span class="badge badge-ECHEANCE nowrap">{{ element.pjCode || 'PJ' }}</span>
+              <span class="pj-title">{{ element.pjName || 'Document' }}</span>
+              <span class="pj-acts no-print">
+                <button class="btn btn-sm btn-ghost" title="Copier le nom de fichier" @click="copyOne(element)">⧉</button>
+                <button class="btn btn-sm btn-ghost" title="Ouvrir l'étape rattachée" @click="ui.openDrawer(element)">✎</button>
+                <button class="btn btn-sm btn-ghost btn-danger" title="Détacher cette pièce (l'étape est conservée)" @click="detach(element)">✕</button>
+              </span>
             </div>
-            <button class="btn btn-sm btn-ghost no-print" title="Copier le nom de fichier" @click="copyOne(element)">⧉</button>
+            <div class="mono">{{ pjFilename(element) }}</div>
+            <div class="xsmall muted pj-origin">
+              {{ formatDateFR(element.date) }} · {{ element.fact.slice(0, 70) }}{{ element.fact.length > 70 ? '…' : '' }}
+            </div>
           </div>
         </template>
       </draggable>
@@ -90,15 +104,20 @@ async function copyAll () {
     </div>
 
     <p class="small muted footnote">
-      Renommez vos fichiers avec le nom généré ci-dessus : l'assureur retrouve immédiatement la pièce citée
-      dans la chronologie.
+      Chaque pièce est rattachée à une étape de la chronologie : <b>✕ la détache</b> (l'étape, elle, est conservée),
+      <b>✎ ouvre l'étape</b> pour la modifier. Renommez vos fichiers avec le nom généré ci-dessus : l'assureur
+      retrouve immédiatement la pièce citée dans la chronologie.
     </p>
   </section>
 </template>
 
 <style scoped>
 .green { background: var(--green); }
-.pj-main { min-width: 0; flex: 1; }
-.pj-title { font-weight: 600; }
+.pj-card { flex-direction: column; gap: 5px; }
+.pj-head { display: flex; align-items: center; gap: 8px; width: 100%; }
+.pj-title { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-origin { margin-top: 1px; }
+.pj-acts { display: flex; gap: 1px; margin-left: auto; opacity: .55; transition: opacity .14s; }
+.pj-card:hover .pj-acts, .pj-card:focus-within .pj-acts { opacity: 1; }
 .footnote { margin-top: 11px; }
 </style>

@@ -49,6 +49,10 @@ archive/                page HTML monolithique d'origine + prototype Vue via CDN
 | Questions générales | définit l'ordre de priorité repris dans le courrier généré |
 | Fichier `.json` déposé sur la page | import direct dans la base locale |
 
+Une pièce jointe n'est pas une entité autonome : elle appartient à une étape de la chronologie
+(champs code + nom). Dans le bordereau, `✕` détache la pièce de son étape — l'étape, elle, reste —,
+`✎` ouvre l'étape, et « Renuméroter par date » comble les trous de numérotation laissés.
+
 Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une recherche est actif
 (l'ordre affiché serait partiel). Chaque déplacement est annulable (`Ctrl+Z`).
 
