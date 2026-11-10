@@ -10,6 +10,8 @@ export const useUiStore = defineStore('ui', () => {
 
   const theme = ref(prefs.theme === 'dark' ? 'dark' : 'light')
   const density = ref(prefs.density === 'compact' ? 'compact' : 'cosy')
+  // Bandeau d'indicateurs : masqué par défaut, l'essentiel est déjà dans la chronologie
+  const showKpis = ref(prefs.showKpis === true)
 
   // Filtres de la chronologie
   const search = ref('')
@@ -41,6 +43,11 @@ export const useUiStore = defineStore('ui', () => {
 
   function toggleTheme () {
     theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  }
+
+  function toggleKpis () {
+    showKpis.value = !showKpis.value
+    savePrefs({ ...loadPrefs(), showKpis: showKpis.value })
   }
 
   function toggleDensity () {
@@ -96,6 +103,7 @@ export const useUiStore = defineStore('ui', () => {
   return {
     theme,
     density,
+    showKpis,
     search,
     category,
     onlyOpenQuestions,
@@ -108,6 +116,7 @@ export const useUiStore = defineStore('ui', () => {
     hasOverlay,
     toggleTheme,
     toggleDensity,
+    toggleKpis,
     resetFilters,
     toast,
     dismissToast,

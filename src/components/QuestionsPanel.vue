@@ -28,6 +28,11 @@ function addQuestion () {
   ui.toast('Question ajoutée — rédigez-la ci-dessous')
 }
 
+function removeStepQuestion (question) {
+  store.clearStepQuestion(question.id)
+  ui.toast('Question supprimée — Ctrl+Z pour annuler')
+}
+
 function removeQuestion (id) {
   store.removeGlobalQuestion(id)
   ui.toast('Question supprimée — Ctrl+Z pour annuler')
@@ -60,6 +65,8 @@ function removeQuestion (id) {
           <button class="btn btn-sm no-print" @click="store.setStepQuestion(question.id, { questionResolved: !question.resolved })">
             {{ question.resolved ? 'Rouvrir' : 'Marquer traitée' }}
           </button>
+          <button class="btn btn-sm btn-ghost no-print" title="Ouvrir l'étape rattachée" @click="ui.openDrawer(store.active.steps.find((s) => s.id === question.id))">✎</button>
+          <button class="btn btn-sm btn-ghost btn-danger no-print" title="Supprimer la question (l'étape est conservée)" @click="removeStepQuestion(question)">🗑</button>
         </div>
         <p class="text">{{ question.text }}</p>
         <input
