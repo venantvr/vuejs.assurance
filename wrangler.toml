@@ -1,0 +1,18 @@
+# Déploiement Cloudflare Workers (assets statiques).
+# Pas d'URL *.workers.dev ni d'URL de preview : le site n'est servi que par
+# la (ou les) route(s) de domaine personnalisé déclarée(s) ci-dessous.
+
+name = "vuejs-assurance"
+compatibility_date = "2026-11-10"
+
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+# Décommentez et adaptez pour publier sur votre domaine :
+# routes = [
+#   { pattern = "assurance.exemple.fr", custom_domain = true }
+# ]

@@ -1,0 +1,23 @@
+{
+  "name": "vuejs.assurance",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Journal d'audit et chronologie de sinistre — application Vue 3",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "pinia": "^2.3.1",
+    "sortablejs": "^1.15.6",
+    "vue": "^3.5.45",
+    "vuedraggable": "^4.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "vite": "^8.3.7"
+  }
+}
