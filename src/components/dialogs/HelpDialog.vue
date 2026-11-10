@@ -46,6 +46,16 @@ const shortcuts = [
     </section>
 
     <section>
+      <b class="small">Acteurs</b>
+      <p class="small muted">
+        Le champ « Acteur / intervenant » puise dans un catalogue partagé par tous les dossiers :
+        <code>▾</code> ouvre la liste, la frappe la filtre, « Mémoriser » y ajoute la saisie courante et
+        <code>✕</code> retire une entrée (les étapes qui la citent ne changent pas). Tout acteur saisi lors
+        de l'enregistrement d'une étape est mémorisé automatiquement.
+      </p>
+    </section>
+
+    <section>
       <b class="small">Raccourcis clavier</b>
       <div class="grid-2 small shortcuts">
         <div v-for="[keys, label] in shortcuts" :key="keys">

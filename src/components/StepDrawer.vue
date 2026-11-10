@@ -5,11 +5,11 @@ import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { CATEGORIES, CATEGORY_ORDER, createStep } from '@/lib/model.js'
 import { copyToClipboard, pjFilename } from '@/lib/format.js'
+import ActorPicker from './ActorPicker.vue'
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const { drawerStep } = storeToRefs(ui)
-const { knownActors } = storeToRefs(store)
 
 const form = ref(null)
 const factField = ref(null)
@@ -111,13 +111,10 @@ function confirmRemove () {
         </label>
 
         <div class="grid-3">
-          <label class="field">
+          <div class="field">
             <span>Acteur / intervenant</span>
-            <input v-model="form.actor" list="known-actors" placeholder="Ex : Assuré, Syndic, Expert…">
-            <datalist id="known-actors">
-              <option v-for="actor in knownActors" :key="actor" :value="actor" />
-            </datalist>
-          </label>
+            <ActorPicker v-model="form.actor" />
+          </div>
           <label class="field">
             <span>Montant engagé (€)</span>
             <input v-model.number="form.amount" type="number" step="0.01" min="0" placeholder="0,00">

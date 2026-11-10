@@ -68,12 +68,17 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
   `chronoassur_dossier_v1`, ainsi que leurs exports `.json`.
 - Sauvegarde fichier : dossier courant `.json`, base complète `.json`, chronologie `.csv`.
 - Rien ne sort du navigateur : aucune requête réseau en dehors de la police Inter.
+- La correction orthographique du navigateur est désactivée sur toute l'application
+  (`spellcheck="false"`), les champs contenant des références et du vocabulaire métier.
 
 ## Gains de temps
 
 - **Capture rapide** : une ligne + `Entrée`. Date (`12/09`, `hier`, `14h30`), montant (`285€`),
   catégorie (`tech:`, `admin:`, `relance:`) et pièce (`PJ Nom`) reconnues ; `|` sépare
   fait / acteur / pièce. Un aperçu montre l'interprétation avant validation.
+- **Catalogue d'acteurs** : le champ « Acteur / intervenant » est un sélecteur alimenté
+  automatiquement à chaque étape enregistrée, partagé par tous les dossiers, filtrable à la frappe,
+  avec ajout explicite et suppression des entrées inutiles.
 - **Modèles de sinistre** (dégât des eaux, incendie, vol, auto) : chronologie pré-rédigée,
   pièces déjà numérotées.
 - **Étapes types** : relance, expertise, proposition d'indemnisation, désaccord…
