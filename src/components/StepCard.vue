@@ -8,7 +8,7 @@ const props = defineProps({
   draggable: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['edit', 'duplicate', 'insert-after', 'remove', 'copy-pj', 'toggle-question', 'answer-question', 'shift-date'])
+const emit = defineEmits(['edit', 'duplicate', 'insert-after', 'remove', 'copy-pj', 'toggle-question', 'answer-question', 'remove-question', 'shift-date'])
 
 const category = computed(() => CATEGORIES[props.step.category] || CATEGORIES.ADMIN)
 const amount = computed(() => Number.parseFloat(props.step.amount) || 0)
@@ -62,6 +62,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
         <button class="btn btn-sm no-print" @click="emit('toggle-question')">
           {{ step.questionResolved ? 'Rouvrir' : 'Marquer traitée' }}
         </button>
+        <button class="btn btn-sm btn-ghost btn-danger no-print" title="Supprimer la question (l'étape est conservée)" @click="emit('remove-question')">🗑</button>
       </div>
       <p class="q-text">{{ step.question }}</p>
       <input

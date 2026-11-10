@@ -1,10 +1,12 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
+import { useUiStore } from '@/stores/ui.js'
 import { useTimeline } from '@/composables/useTimeline.js'
 import { formatCurrency } from '@/lib/format.js'
 
 const store = useDossiersStore()
+const ui = useUiStore()
 const { active } = storeToRefs(store)
 const { kpis } = useTimeline()
 </script>
@@ -16,6 +18,9 @@ const { kpis } = useTimeline()
       <h2>1. Synthèse du dossier</h2>
       <span class="grow" />
       <span v-if="active.meta.deductible" class="badge">Franchise : {{ active.meta.deductible }}</span>
+      <button class="btn btn-sm no-print" :title="ui.showKpis ? 'Masquer les indicateurs' : 'Afficher les indicateurs'" @click="ui.toggleKpis()">
+        {{ ui.showKpis ? '▾' : '▸' }} Indicateurs
+      </button>
     </div>
 
     <div class="grid-2 meta-grid">
@@ -45,7 +50,7 @@ const { kpis } = useTimeline()
       </label>
     </div>
 
-    <div class="kpis">
+    <div v-if="ui.showKpis" class="kpis">
       <div class="kpi">
         <div class="k-label">Sommes engagées</div>
         <div class="k-value">{{ formatCurrency(kpis.total) }}</div>

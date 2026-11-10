@@ -158,6 +158,7 @@ defineExpose({ focusSearch })
               @shift-date="(days) => store.shiftStepDate(element.id, days)"
               @toggle-question="store.setStepQuestion(element.id, { questionResolved: !element.questionResolved })"
               @answer-question="(value) => store.setStepQuestion(element.id, { questionAnswer: value })"
+              @remove-question="store.clearStepQuestion(element.id); ui.toast('Question supprimée — Ctrl+Z pour annuler')"
             />
           </div>
         </template>

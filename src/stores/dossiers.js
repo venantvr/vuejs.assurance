@@ -359,6 +359,17 @@ export const useDossiersStore = defineStore('dossiers', () => {
     touch()
   }
 
+  /** Supprime la question d'une étape (l'étape reste dans la chronologie). */
+  function clearStepQuestion (id) {
+    const step = active.value?.steps.find((s) => s.id === id)
+    if (!step) return
+    commit()
+    step.question = ''
+    step.questionResolved = false
+    step.questionAnswer = ''
+    touch()
+  }
+
   function setStepQuestion (id, patch) {
     const step = active.value?.steps.find((s) => s.id === id)
     if (!step) return
@@ -442,6 +453,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     removeGlobalQuestion,
     reorderGlobalQuestions,
     setStepQuestion,
+    clearStepQuestion,
     importPayload
   }
 })
