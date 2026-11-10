@@ -7,12 +7,12 @@ import StepTable from './StepTable.vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { useTimeline } from '@/composables/useTimeline.js'
-import { CATEGORIES, CATEGORY_ORDER, SORT_MODES, shiftISO } from '@/lib/model.js'
+import { SORT_MODES, shiftISO } from '@/lib/model.js'
 import { copyToClipboard } from '@/lib/format.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
-const { active } = storeToRefs(store)
+const { active, categories } = storeToRefs(store)
 const { visibleSteps, countByCategory, gapBefore } = useTimeline()
 
 const searchInput = ref(null)
@@ -99,12 +99,14 @@ defineExpose({ focusSearch })
         Toutes ({{ active.steps.length }})
       </button>
       <button
-        v-for="key in CATEGORY_ORDER"
-        :key="key"
-        class="chip"
-        :class="{ on: ui.category === key }"
-        @click="ui.category = key"
-      >{{ CATEGORIES[key].icon }} {{ CATEGORIES[key].short }} ({{ countByCategory[key] || 0 }})</button>
+        v-for="cat in categories"
+        :key="cat.key"
+        class="chip cat-chip"
+        :class="{ on: ui.category === cat.key }"
+        :style="{ '--cat': cat.color }"
+        @click="ui.category = cat.key"
+      >{{ cat.icon }} {{ cat.short }} ({{ countByCategory[cat.key] || 0 }})</button>
+      <button class="chip no-print" title="Ajouter ou modifier des catégories" @click="ui.openDialog('categories')">⚙ Catégories</button>
       <span class="grow" />
       <button class="chip" :class="{ on: ui.onlyOpenQuestions }" @click="ui.onlyOpenQuestions = !ui.onlyOpenQuestions">● Questions ouvertes</button>
       <button class="chip" :class="{ on: ui.onlyWithoutPj }" @click="ui.onlyWithoutPj = !ui.onlyWithoutPj">📎 Sans pièce jointe</button>
@@ -143,7 +145,7 @@ defineExpose({ focusSearch })
       >
         <template #item="{ element, index }">
           <div class="tl-item">
-            <span class="tl-dot" :class="`dot-${element.category}`" />
+            <span class="tl-dot cat-dot" :style="{ '--cat': store.category(element.category).color }" />
             <div v-if="!dragging && gapBefore(index) !== null" class="gap-note" :class="{ hot: gapBefore(index) >= 15 }">
               ⟡ {{ gapBefore(index) }} jours d'écart<template v-if="gapBefore(index) >= 15"> — délai à justifier ou à opposer</template>
             </div>

@@ -3,7 +3,6 @@ import BaseDialog from '../BaseDialog.vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { STEP_PRESETS } from '@/lib/presets.js'
-import { CATEGORIES } from '@/lib/model.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
@@ -21,7 +20,7 @@ function use (preset) {
       <button v-for="(preset, index) in STEP_PRESETS" :key="index" class="preset" @click="use(preset)">
         <span class="row top">
           <b class="label">{{ preset.fact }}</b>
-          <span class="badge" :class="`badge-${preset.category}`">{{ CATEGORIES[preset.category].short }}</span>
+          <span class="badge cat-badge" :style="{ '--cat': store.category(preset.category).color }">{{ store.category(preset.category).short }}</span>
         </span>
         <span>
           <template v-if="preset.actor">Acteur proposé : {{ preset.actor }}</template>

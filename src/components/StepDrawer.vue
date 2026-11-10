@@ -3,13 +3,14 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
-import { CATEGORIES, CATEGORY_ORDER, createStep } from '@/lib/model.js'
+import { createStep } from '@/lib/model.js'
 import { copyToClipboard, pjFilename } from '@/lib/format.js'
 import ActorPicker from './ActorPicker.vue'
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const { drawerStep } = storeToRefs(ui)
+const { categories } = storeToRefs(store)
 
 const form = ref(null)
 const factField = ref(null)
@@ -91,12 +92,18 @@ function confirmRemove () {
             <span>Heure</span>
             <input v-model="form.time" type="time">
           </label>
-          <label class="field">
+          <div class="field">
             <span>Catégorie *</span>
-            <select v-model="form.category">
-              <option v-for="key in CATEGORY_ORDER" :key="key" :value="key">{{ CATEGORIES[key].label }}</option>
-            </select>
-          </label>
+            <div class="cat-field">
+              <select v-model="form.category">
+                <option v-for="cat in categories" :key="cat.key" :value="cat.key">{{ cat.icon }} {{ cat.label }}</option>
+                <option v-if="!categories.some((c) => c.key === form.category)" :value="form.category">
+                  {{ form.category }} (catégorie supprimée)
+                </option>
+              </select>
+              <button class="btn btn-sm btn-ghost" type="button" title="Ajouter ou modifier des catégories" @click="ui.openDialog('categories')">⚙</button>
+            </div>
+          </div>
         </div>
 
         <label class="field">
@@ -184,4 +191,6 @@ function confirmRemove () {
 .question-card { background: var(--violet-soft); border-color: color-mix(in srgb, var(--violet) 25%, transparent); }
 .question-field { margin-top: 9px; }
 .faded { opacity: .75; }
+.cat-field { display: flex; align-items: center; gap: 2px; }
+.cat-field select { flex: 1; min-width: 0; }
 </style>

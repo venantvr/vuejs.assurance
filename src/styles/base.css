@@ -217,6 +217,7 @@ select { cursor: pointer; }
 }
 .chip:hover { border-color: var(--border-strong); }
 .chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.chip[disabled] { opacity: .4; cursor: not-allowed; }
 
 /* ---------- Timeline ---------- */
 
@@ -491,3 +492,36 @@ p { margin: 0 0 0; }
 @media print {
   .drag-handle, .drag-hint { display: none !important; }
 }
+
+/* ============================================================
+   Catégories : couleur portée par la variable --cat
+   (permet les catégories personnalisées, natives ou non)
+   ============================================================ */
+
+.cat-badge {
+  background: color-mix(in srgb, var(--cat) 12%, transparent);
+  color: color-mix(in srgb, var(--cat) 88%, var(--text));
+  border-color: color-mix(in srgb, var(--cat) 32%, transparent);
+}
+:root[data-theme="dark"] .cat-badge {
+  background: color-mix(in srgb, var(--cat) 22%, transparent);
+  color: color-mix(in srgb, var(--cat) 45%, #ffffff);
+  border-color: color-mix(in srgb, var(--cat) 45%, transparent);
+}
+.cat-dot { background: var(--cat); }
+.cat-swatch {
+  width: 22px; height: 22px; border-radius: 7px; border: 2px solid transparent;
+  background: var(--cat); cursor: pointer; padding: 0; flex: none;
+}
+.cat-swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+.chip.on.cat-chip {
+  background: color-mix(in srgb, var(--cat) 90%, var(--text));
+  border-color: color-mix(in srgb, var(--cat) 90%, var(--text));
+  color: #fff;
+}
+.cat-row {
+  display: flex; align-items: center; gap: 9px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 10px; background: var(--surface);
+}
+.cat-row .cat-name { flex: 1; min-width: 0; }

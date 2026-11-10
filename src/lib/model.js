@@ -2,15 +2,83 @@
  * Modèle de données : catégories, création et normalisation des entités.
  */
 
-export const CATEGORIES = {
-  SINISTRE: { label: 'Fait générateur / Sinistre', short: 'Sinistre', icon: '⚠' },
-  TECHNIQUE: { label: 'Mesure conservatoire / Technique', short: 'Technique', icon: '🔧' },
-  ADMIN: { label: 'Administratif / Juridique', short: 'Administratif', icon: '📄' },
-  BLOCAGE: { label: 'Point de blocage / Relance', short: 'Blocage / Relance', icon: '🔔' },
-  ECHEANCE: { label: 'Échéance / Rendez-vous', short: 'Échéance', icon: '📅' }
+/** Palette proposée pour les catégories personnalisées. */
+export const CATEGORY_COLORS = [
+  { name: 'Rouge', value: '#dc2626' },
+  { name: 'Orange', value: '#ea580c' },
+  { name: 'Ambre', value: '#b45309' },
+  { name: 'Vert', value: '#047857' },
+  { name: 'Turquoise', value: '#0d9488' },
+  { name: 'Bleu', value: '#2563eb' },
+  { name: 'Indigo', value: '#4338ca' },
+  { name: 'Violet', value: '#7c3aed' },
+  { name: 'Rose', value: '#be185d' },
+  { name: 'Ardoise', value: '#475569' }
+]
+
+/** Catégories livrées avec l'application : ni modifiables, ni supprimables. */
+export const BUILTIN_CATEGORIES = [
+  { key: 'SINISTRE', label: 'Fait générateur / Sinistre', short: 'Sinistre', icon: '⚠', color: '#dc2626', builtin: true },
+  { key: 'TECHNIQUE', label: 'Mesure conservatoire / Technique', short: 'Technique', icon: '🔧', color: '#2563eb', builtin: true },
+  { key: 'ADMIN', label: 'Administratif / Juridique', short: 'Administratif', icon: '📄', color: '#b45309', builtin: true },
+  { key: 'BLOCAGE', label: 'Point de blocage / Relance', short: 'Blocage / Relance', icon: '🔔', color: '#7c3aed', builtin: true },
+  { key: 'ECHEANCE', label: 'Échéance / Rendez-vous', short: 'Échéance', icon: '📅', color: '#047857', builtin: true }
+]
+
+/** Catégories suggérées à l'ajout (un clic suffit à les créer). */
+export const CATEGORY_SUGGESTIONS = [
+  { label: 'Observation / Constat sur site', short: 'Observation', icon: '🔍', color: '#0d9488' },
+  { label: 'Question posée / restée sans réponse', short: 'Question', icon: '❓', color: '#4338ca' },
+  { label: 'Expertise judiciaire', short: 'Expertise', icon: '⚖', color: '#be185d' },
+  { label: 'Travaux / Chantier', short: 'Chantier', icon: '🏠', color: '#ea580c' },
+  { label: 'Désordre constaté', short: 'Désordre', icon: '💥', color: '#dc2626' }
+]
+
+/** Catégorie de repli quand une étape cite une catégorie supprimée. */
+export const FALLBACK_CATEGORY = { key: 'ADMIN', label: 'Catégorie inconnue', short: 'Non classé', icon: '•', color: '#475569' }
+
+export const CATEGORIES = Object.fromEntries(BUILTIN_CATEGORIES.map((c) => [c.key, c]))
+
+/** Fabrique une clé technique stable à partir d'un libellé. */
+export function categoryKey (label, taken = []) {
+  const base = String(label || 'CATEGORIE')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    .slice(0, 24) || 'CATEGORIE'
+  let key = base
+  let n = 2
+  while (taken.includes(key)) key = `${base}_${n++}`
+  return key
 }
 
-export const CATEGORY_ORDER = ['SINISTRE', 'TECHNIQUE', 'ADMIN', 'BLOCAGE', 'ECHEANCE']
+export function createCategory ({ label, short, icon, color } = {}, taken = []) {
+  const title = String(label || '').trim() || 'Nouvelle catégorie'
+  return {
+    key: categoryKey(title, taken),
+    label: title,
+    short: String(short || '').trim() || title.split(/[/(—-]/)[0].trim().slice(0, 22) || title,
+    icon: String(icon || '').trim().slice(0, 3) || '•',
+    color: CATEGORY_COLORS.some((c) => c.value === color) ? color : '#475569',
+    builtin: false
+  }
+}
+
+/** Normalise une liste de catégories personnalisées (sans écraser les natives). */
+export function sanitizeCategories (list) {
+  const taken = BUILTIN_CATEGORIES.map((c) => c.key)
+  const out = []
+  for (const raw of Array.isArray(list) ? list : []) {
+    if (!raw || typeof raw !== 'object') continue
+    if (taken.includes(raw.key)) continue
+    const category = createCategory(raw, taken)
+    if (raw.key && !taken.includes(String(raw.key))) category.key = String(raw.key)
+    taken.push(category.key)
+    out.push(category)
+  }
+  return out
+}
+
+export const CATEGORY_ORDER = BUILTIN_CATEGORIES.map((c) => c.key)
 
 export const SORT_MODES = {
   DATE_ASC: 'Ancien → récent',
@@ -145,7 +213,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       id: step.id || uid('step'),
       date: step.date || todayISO(),
       time: step.time || '',
-      category: CATEGORIES[step.category] ? step.category : 'ADMIN',
+      category: String(step.category || 'ADMIN').trim() || 'ADMIN',
       fact: step.fact || '',
       actor: step.actor || '',
       amount: Number.parseFloat(step.amount) || 0,

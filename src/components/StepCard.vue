@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { CATEGORIES } from '@/lib/model.js'
+import { useDossiersStore } from '@/stores/dossiers.js'
 import { formatCurrency, formatDateFR, pjFilename } from '@/lib/format.js'
 
 const props = defineProps({
@@ -10,7 +10,8 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'duplicate', 'insert-after', 'remove', 'copy-pj', 'toggle-question', 'answer-question', 'remove-question', 'shift-date'])
 
-const category = computed(() => CATEGORIES[props.step.category] || CATEGORIES.ADMIN)
+const store = useDossiersStore()
+const category = computed(() => store.category(props.step.category))
 const amount = computed(() => Number.parseFloat(props.step.amount) || 0)
 const filename = computed(() => pjFilename(props.step))
 const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !props.step.questionResolved)
@@ -28,7 +29,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
       >⠿</button>
       <span class="step-date">{{ formatDateFR(step.date) }}</span>
       <span v-if="step.time" class="muted xsmall">{{ step.time }}</span>
-      <span class="badge" :class="`badge-${step.category}`">{{ category.icon }} {{ category.short }}</span>
+      <span class="badge cat-badge" :style="{ '--cat': category.color }">{{ category.icon }} {{ category.short }}</span>
       <span v-if="step.actor" class="badge">👤 {{ step.actor }}</span>
       <span v-if="amount" class="badge badge-money">{{ formatCurrency(amount) }}</span>
 
