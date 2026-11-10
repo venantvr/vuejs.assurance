@@ -76,6 +76,10 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
 - **Capture rapide** : une ligne + `Entrée`. Date (`12/09`, `hier`, `14h30`), montant (`285€`),
   catégorie (`tech:`, `admin:`, `relance:`) et pièce (`PJ Nom`) reconnues ; `|` sépare
   fait / acteur / pièce. Un aperçu montre l'interprétation avant validation.
+- **Catégories extensibles** : les cinq natives (sinistre, technique, administratif, blocage,
+  échéance) peuvent être complétées par vos propres catégories — libellé, nom court, icône, couleur —
+  partagées par tous les dossiers. Supprimer une catégorie reclasse ses étapes au lieu de les perdre.
+  Suggestions prêtes à l'emploi : observation, question, expertise, chantier, désordre.
 - **Catalogue d'acteurs** : le champ « Acteur / intervenant » est un sélecteur alimenté
   automatiquement à chaque étape enregistrée, partagé par tous les dossiers, filtrable à la frappe,
   avec ajout explicite et suppression des entrées inutiles.

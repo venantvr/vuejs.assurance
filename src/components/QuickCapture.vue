@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { parseQuickLine } from '@/lib/parse.js'
-import { CATEGORIES } from '@/lib/model.js'
 import { formatCurrency, formatDateFR } from '@/lib/format.js'
 
 const store = useDossiersStore()
@@ -12,7 +11,7 @@ const ui = useUiStore()
 const line = ref('')
 const input = ref(null)
 
-const parsed = computed(() => parseQuickLine(line.value))
+const parsed = computed(() => parseQuickLine(line.value, store.categories))
 
 function focus () {
   input.value?.focus()
@@ -54,8 +53,8 @@ defineExpose({ focus })
     </div>
 
     <div v-if="parsed" class="capture-preview">
-      <span class="badge" :class="`badge-${parsed.category}`">
-        {{ CATEGORIES[parsed.category].short }}<template v-if="parsed.guessedCategory"> (déduit)</template>
+      <span class="badge cat-badge" :style="{ '--cat': store.category(parsed.category).color }">
+        {{ store.category(parsed.category).short }}<template v-if="parsed.guessedCategory"> (déduit)</template>
       </span>
       <b>{{ formatDateFR(parsed.date) }}</b>
       <span v-if="parsed.time">{{ parsed.time }}</span>

@@ -1,9 +1,10 @@
 <script setup>
 import { computed } from 'vue'
-import { CATEGORIES } from '@/lib/model.js'
+import { useDossiersStore } from '@/stores/dossiers.js'
 import { formatCurrency, formatDateFR } from '@/lib/format.js'
 
 const props = defineProps({ steps: { type: Array, required: true } })
+const store = useDossiersStore()
 defineEmits(['edit', 'remove'])
 
 const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseFloat(s.amount) || 0), 0))
@@ -23,7 +24,11 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
           <td class="nowrap">
             {{ formatDateFR(step.date) }}<br><span class="xsmall muted">{{ step.time }}</span>
           </td>
-          <td><span class="badge" :class="`badge-${step.category}`">{{ CATEGORIES[step.category].short }}</span></td>
+          <td>
+            <span class="badge cat-badge" :style="{ '--cat': store.category(step.category).color }">
+              {{ store.category(step.category).short }}
+            </span>
+          </td>
           <td class="fact">
             {{ step.fact }}
             <div v-if="step.question && !step.questionResolved" class="xsmall pending">● {{ step.question }}</div>

@@ -1,7 +1,7 @@
 /**
  * Base locale (localStorage) + reprise automatique des versions précédentes.
  */
-import { sanitizeDossier } from './model.js'
+import { sanitizeCategories, sanitizeDossier } from './model.js'
 
 export const DB_KEY = 'vuejs_assurance_db_v1'
 export const PREFS_KEY = 'vuejs_assurance_prefs_v1'
@@ -10,7 +10,7 @@ export const PREFS_KEY = 'vuejs_assurance_prefs_v1'
 const LEGACY_KEYS = ['chronoassur_db_v2', 'chronoassur_dossier_v1']
 
 export function emptyDb () {
-  return { version: 1, activeId: null, dossiers: [], actors: [] }
+  return { version: 1, activeId: null, dossiers: [], actors: [], categories: [] }
 }
 
 /** Liste d'acteurs : chaînes non vides, dédoublonnées, triées. */
@@ -56,6 +56,7 @@ export function loadDb () {
         db.dossiers = parsed.dossiers.map((d) => sanitizeDossier(d))
         db.activeId = parsed.activeId || db.dossiers[0]?.id || null
         db.actors = sanitizeActors(parsed.actors)
+        db.categories = sanitizeCategories(parsed.categories)
       }
     }
   } catch { /* stockage corrompu : on repart sur une base propre */ }
@@ -80,7 +81,8 @@ export function saveDb (db) {
       version: 1,
       activeId: db.activeId,
       dossiers: db.dossiers,
-      actors: db.actors || []
+      actors: db.actors || [],
+      categories: db.categories || []
     }))
     return { ok: true }
   } catch (error) {

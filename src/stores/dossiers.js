@@ -5,8 +5,9 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
-  cloneDossier, createDossier, createQuestion, createStep,
-  sanitizeDossier, todayISO, uid
+  BUILTIN_CATEGORIES, FALLBACK_CATEGORY,
+  cloneDossier, createCategory, createDossier, createQuestion, createStep,
+  sanitizeCategories, sanitizeDossier, todayISO, uid
 } from '@/lib/model.js'
 import { loadDb, sanitizeActors, saveDb } from '@/lib/storage.js'
 import { DOSSIER_TEMPLATES } from '@/lib/presets.js'
@@ -19,6 +20,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
   const activeId = ref(null)
   /** Catalogue d'acteurs réutilisables, partagé par tous les dossiers. */
   const actors = ref([])
+  /** Catégories personnalisées, en plus des cinq catégories natives. */
+  const customCategories = ref([])
 
   const saveState = ref('saved') // saved | pending | error
   const saveError = ref('')
@@ -59,13 +62,29 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   const knownActors = computed(() => sanitizeActors(actors.value))
 
+  /** Catégories natives puis personnalisées, dans l'ordre d'affichage. */
+  const categories = computed(() => [...BUILTIN_CATEGORIES, ...customCategories.value])
+  const categoryMap = computed(() => Object.fromEntries(categories.value.map((c) => [c.key, c])))
+
+  /** Descripteur d'une catégorie, avec repli si elle a été supprimée. */
+  function category (key) {
+    return categoryMap.value[key] || { ...FALLBACK_CATEGORY, key: key || FALLBACK_CATEGORY.key }
+  }
+
+  /** Nombre d'étapes citant une catégorie, tous dossiers confondus. */
+  function categoryUsage (key) {
+    return dossiers.value.reduce(
+      (total, d) => total + d.steps.filter((s) => s.category === key).length, 0
+    )
+  }
+
   const canUndo = computed(() => past.value.length > 0)
   const canRedo = computed(() => future.value.length > 0)
 
   /* ------------------------------------------------------------ persistance */
 
   function snapshotState () {
-    return JSON.stringify({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value })
+    return JSON.stringify({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value, categories: customCategories.value })
   }
 
   function schedulePersist () {
@@ -77,13 +96,13 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   function persistNow () {
     clearTimeout(saveTimer)
-    const result = saveDb({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value })
+    const result = saveDb({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value, categories: customCategories.value })
     saveState.value = result.ok ? 'saved' : 'error'
     saveError.value = result.ok ? '' : result.error
     return result
   }
 
-  watch([dossiers, activeId, actors], schedulePersist, { deep: true })
+  watch([dossiers, activeId, actors, customCategories], schedulePersist, { deep: true })
 
   /* --------------------------------------------------------------- historique */
 
@@ -99,6 +118,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     dossiers.value = parsed.dossiers.map((d) => sanitizeDossier(d))
     activeId.value = parsed.activeId
     actors.value = sanitizeActors(parsed.actors)
+    customCategories.value = sanitizeCategories(parsed.categories)
     restoring = false
     schedulePersist()
   }
@@ -159,6 +179,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
     const used = dossiers.value.flatMap((d) => d.steps.map((step) => step.actor))
     actors.value = sanitizeActors([...(db.actors || []), ...used])
+    customCategories.value = sanitizeCategories(db.categories)
     restoring = false
     persistNow()
   }
@@ -201,6 +222,46 @@ export const useDossiersStore = defineStore('dossiers', () => {
     dossiers.value = dossiers.value.filter((d) => d.id !== id)
     if (!dossiers.value.length) dossiers.value.push(createDossier('Nouveau dossier'))
     activeId.value = dossiers.value[0].id
+  }
+
+  /* ------------------------------------------------------------- catégories */
+
+  function addCategory (data) {
+    commit()
+    const created = createCategory(data, categories.value.map((c) => c.key))
+    customCategories.value = [...customCategories.value, created]
+    return created
+  }
+
+  function updateCategory (key, patch) {
+    const target = customCategories.value.find((c) => c.key === key)
+    if (!target) return
+    commit()
+    Object.assign(target, {
+      label: patch.label !== undefined ? String(patch.label).trim() || target.label : target.label,
+      short: patch.short !== undefined ? String(patch.short).trim() || target.short : target.short,
+      icon: patch.icon !== undefined ? String(patch.icon).trim().slice(0, 3) || target.icon : target.icon,
+      color: patch.color !== undefined ? patch.color : target.color
+    })
+  }
+
+  /**
+   * Supprime une catégorie personnalisée. Les étapes qui la citaient sont
+   * reclassées dans `fallbackKey` (aucune étape n'est perdue).
+   */
+  function removeCategory (key, fallbackKey = 'ADMIN') {
+    if (BUILTIN_CATEGORIES.some((c) => c.key === key)) return 0
+    commit()
+    let moved = 0
+    dossiers.value.forEach((d) => d.steps.forEach((step) => {
+      if (step.category === key) {
+        step.category = fallbackKey
+        moved += 1
+      }
+    }))
+    customCategories.value = customCategories.value.filter((c) => c.key !== key)
+    touch()
+    return moved
   }
 
   /* ---------------------------------------------------------------- acteurs */
@@ -438,6 +499,10 @@ export const useDossiersStore = defineStore('dossiers', () => {
     dossiers,
     activeId,
     actors,
+    categories,
+    categoryMap,
+    category,
+    categoryUsage,
     active,
     dossiersByRecent,
     orderedSteps,
@@ -457,6 +522,9 @@ export const useDossiersStore = defineStore('dossiers', () => {
     duplicateActive,
     renameActive,
     removeActive,
+    addCategory,
+    updateCategory,
+    removeCategory,
     rememberActor,
     forgetActor,
     addStep,

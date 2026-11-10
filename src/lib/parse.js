@@ -32,7 +32,26 @@ function guessCategory (text) {
   return 'ADMIN'
 }
 
-export function parseQuickLine (line) {
+/** Alias de saisie pour les catégories personnalisées : clé, libellé court, libellé. */
+function aliasesFor (categories) {
+  const map = { ...CATEGORY_ALIASES }
+  for (const cat of categories || []) {
+    for (const token of [cat.key, cat.short, cat.label]) {
+      const alias = String(token || '').trim().toLowerCase()
+      if (alias && !alias.includes(' ')) map[alias] = cat.key
+    }
+    // premier mot du libellé court : « observation » pour « Observation / Constat »
+    const first = String(cat.short || cat.label || '').trim().toLowerCase().split(/[\s/]+/)[0]
+    if (first && !map[first]) map[first] = cat.key
+  }
+  return map
+}
+
+/**
+ * @param {string} line  ligne saisie
+ * @param {Array}  categories  catégories disponibles (natives + personnalisées)
+ */
+export function parseQuickLine (line, categories = []) {
   let text = String(line || '').trim()
   if (!text) return null
 
@@ -95,9 +114,10 @@ export function parseQuickLine (line) {
   }
 
   // Catégorie explicite : "tech:", "relance -"
-  const cat = text.match(/^([a-zA-Zéèà]+)\s*[:>-]\s*/)
-  if (cat && CATEGORY_ALIASES[cat[1].toLowerCase()]) {
-    result.category = CATEGORY_ALIASES[cat[1].toLowerCase()]
+  const aliases = aliasesFor(categories)
+  const cat = text.match(/^([a-zA-Zéèàûô]+)\s*[:>-]\s*/)
+  if (cat && aliases[cat[1].toLowerCase()]) {
+    result.category = aliases[cat[1].toLowerCase()]
     result.guessedCategory = false
     text = text.slice(cat[0].length)
   }

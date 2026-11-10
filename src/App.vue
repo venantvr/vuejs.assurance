@@ -9,6 +9,7 @@ import TimelinePanel from './components/TimelinePanel.vue'
 import BordereauPanel from './components/BordereauPanel.vue'
 import StepDrawer from './components/StepDrawer.vue'
 import ToastHost from './components/ToastHost.vue'
+import CategoriesDialog from './components/dialogs/CategoriesDialog.vue'
 import PresetsDialog from './components/dialogs/PresetsDialog.vue'
 import NewDossierDialog from './components/dialogs/NewDossierDialog.vue'
 import RenameDossierDialog from './components/dialogs/RenameDossierDialog.vue'
@@ -118,6 +119,7 @@ function confirmDeleteDossier () {
     <StepDrawer />
 
     <PresetsDialog v-if="ui.dialog === 'presets'" />
+    <CategoriesDialog v-if="ui.dialog === 'categories'" />
     <NewDossierDialog v-if="ui.dialog === 'new-dossier'" />
     <RenameDossierDialog v-if="ui.dialog === 'rename'" />
     <MailDialog v-if="ui.dialog === 'mail'" />

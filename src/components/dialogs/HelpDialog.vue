@@ -46,6 +46,17 @@ const shortcuts = [
     </section>
 
     <section>
+      <b class="small">Catégories</b>
+      <p class="small muted">
+        Les cinq catégories natives ne couvrent pas tous les dossiers : <code>⚙ Catégories</code> (barre de
+        filtres ou tiroir d'édition) permet d'en ajouter — libellé, nom court, icône, couleur —, de les
+        modifier et de les supprimer. Supprimer une catégorie reclasse ses étapes en « Administratif /
+        Juridique » plutôt que de les perdre. Le nom court sert aussi de préfixe en capture rapide
+        (<code>observation: fissure en façade nord</code>).
+      </p>
+    </section>
+
+    <section>
       <b class="small">Acteurs</b>
       <p class="small muted">
         Le champ « Acteur / intervenant » puise dans un catalogue partagé par tous les dossiers :
