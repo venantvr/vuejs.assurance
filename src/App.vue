@@ -103,9 +103,9 @@ function confirmDeleteDossier () {
     <main v-if="active">
       <SummaryPanel />
       <QuickCapture ref="capture" />
-      <QuestionsPanel />
       <TimelinePanel ref="timeline" />
       <BordereauPanel />
+      <QuestionsPanel />
 
       <div class="print-only small muted print-foot">
         Document établi par l'assuré — chronologie factuelle, sans appréciation.
