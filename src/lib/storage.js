@@ -10,7 +10,22 @@ export const PREFS_KEY = 'vuejs_assurance_prefs_v1'
 const LEGACY_KEYS = ['chronoassur_db_v2', 'chronoassur_dossier_v1']
 
 export function emptyDb () {
-  return { version: 1, activeId: null, dossiers: [] }
+  return { version: 1, activeId: null, dossiers: [], actors: [] }
+}
+
+/** Liste d'acteurs : chaînes non vides, dédoublonnées, triées. */
+export function sanitizeActors (list) {
+  const seen = new Set()
+  const out = []
+  for (const raw of Array.isArray(list) ? list : []) {
+    const name = String(raw || '').trim()
+    const key = name.toLowerCase()
+    if (name && !seen.has(key)) {
+      seen.add(key)
+      out.push(name)
+    }
+  }
+  return out.sort((a, b) => a.localeCompare(b, 'fr'))
 }
 
 function readLegacy () {
@@ -40,6 +55,7 @@ export function loadDb () {
       if (Array.isArray(parsed?.dossiers)) {
         db.dossiers = parsed.dossiers.map((d) => sanitizeDossier(d))
         db.activeId = parsed.activeId || db.dossiers[0]?.id || null
+        db.actors = sanitizeActors(parsed.actors)
       }
     }
   } catch { /* stockage corrompu : on repart sur une base propre */ }
@@ -63,7 +79,8 @@ export function saveDb (db) {
     localStorage.setItem(DB_KEY, JSON.stringify({
       version: 1,
       activeId: db.activeId,
-      dossiers: db.dossiers
+      dossiers: db.dossiers,
+      actors: db.actors || []
     }))
     return { ok: true }
   } catch (error) {

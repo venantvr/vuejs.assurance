@@ -8,7 +8,7 @@ import {
   cloneDossier, createDossier, createQuestion, createStep,
   sanitizeDossier, todayISO, uid
 } from '@/lib/model.js'
-import { loadDb, saveDb } from '@/lib/storage.js'
+import { loadDb, sanitizeActors, saveDb } from '@/lib/storage.js'
 import { DOSSIER_TEMPLATES } from '@/lib/presets.js'
 
 const HISTORY_LIMIT = 80
@@ -17,6 +17,8 @@ const SAVE_DELAY = 300
 export const useDossiersStore = defineStore('dossiers', () => {
   const dossiers = ref([])
   const activeId = ref(null)
+  /** Catalogue d'acteurs réutilisables, partagé par tous les dossiers. */
+  const actors = ref([])
 
   const saveState = ref('saved') // saved | pending | error
   const saveError = ref('')
@@ -55,11 +57,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
       .sort((a, b) => (a.pjCode || 'zz').localeCompare(b.pjCode || 'zz', 'fr', { numeric: true }))
   })
 
-  const knownActors = computed(() => {
-    const set = new Set()
-    dossiers.value.forEach((d) => d.steps.forEach((s) => s.actor.trim() && set.add(s.actor.trim())))
-    return [...set].sort((a, b) => a.localeCompare(b, 'fr'))
-  })
+  const knownActors = computed(() => sanitizeActors(actors.value))
 
   const canUndo = computed(() => past.value.length > 0)
   const canRedo = computed(() => future.value.length > 0)
@@ -67,7 +65,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
   /* ------------------------------------------------------------ persistance */
 
   function snapshotState () {
-    return JSON.stringify({ activeId: activeId.value, dossiers: dossiers.value })
+    return JSON.stringify({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value })
   }
 
   function schedulePersist () {
@@ -79,13 +77,13 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   function persistNow () {
     clearTimeout(saveTimer)
-    const result = saveDb({ activeId: activeId.value, dossiers: dossiers.value })
+    const result = saveDb({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value })
     saveState.value = result.ok ? 'saved' : 'error'
     saveError.value = result.ok ? '' : result.error
     return result
   }
 
-  watch([dossiers, activeId], schedulePersist, { deep: true })
+  watch([dossiers, activeId, actors], schedulePersist, { deep: true })
 
   /* --------------------------------------------------------------- historique */
 
@@ -100,6 +98,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     restoring = true
     dossiers.value = parsed.dossiers.map((d) => sanitizeDossier(d))
     activeId.value = parsed.activeId
+    actors.value = sanitizeActors(parsed.actors)
     restoring = false
     schedulePersist()
   }
@@ -157,6 +156,9 @@ export const useDossiersStore = defineStore('dossiers', () => {
     restoring = true
     dossiers.value = db.dossiers.length ? db.dossiers : [demoDossier()]
     activeId.value = db.activeId && db.dossiers.length ? db.activeId : dossiers.value[0].id
+    // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
+    const used = dossiers.value.flatMap((d) => d.steps.map((step) => step.actor))
+    actors.value = sanitizeActors([...(db.actors || []), ...used])
     restoring = false
     persistNow()
   }
@@ -201,6 +203,21 @@ export const useDossiersStore = defineStore('dossiers', () => {
     activeId.value = dossiers.value[0].id
   }
 
+  /* ---------------------------------------------------------------- acteurs */
+
+  /** Ajoute un acteur au catalogue s'il n'y figure pas déjà. */
+  function rememberActor (name) {
+    const value = String(name || '').trim()
+    if (!value) return
+    if (actors.value.some((a) => a.toLowerCase() === value.toLowerCase())) return
+    actors.value = sanitizeActors([...actors.value, value])
+  }
+
+  /** Retire un acteur du catalogue (les étapes qui le citent ne changent pas). */
+  function forgetActor (name) {
+    actors.value = actors.value.filter((a) => a.toLowerCase() !== String(name).trim().toLowerCase())
+  }
+
   /* ----------------------------------------------------------------- étapes */
 
   function nextPjCode () {
@@ -221,6 +238,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const step = createStep({ ...data, order: nextOrder() })
     if (step.pjName && !step.pjCode) step.pjCode = nextPjCode()
     active.value.steps.push(step)
+    rememberActor(step.actor)
     touch()
     return step
   }
@@ -232,6 +250,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const payload = { ...data, amount: Number.parseFloat(data.amount) || 0 }
     if (index >= 0) active.value.steps.splice(index, 1, payload)
     else active.value.steps.push({ ...payload, order: nextOrder() })
+    rememberActor(payload.actor)
     touch()
   }
 
@@ -418,6 +437,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
   return {
     dossiers,
     activeId,
+    actors,
     active,
     dossiersByRecent,
     orderedSteps,
@@ -437,6 +457,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
     duplicateActive,
     renameActive,
     removeActive,
+    rememberActor,
+    forgetActor,
     addStep,
     updateStep,
     duplicateStep,
