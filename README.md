@@ -50,7 +50,7 @@ archive/                page HTML monolithique d'origine + prototype Vue via CDN
 | Fichier `.json` déposé sur la page | import direct dans la base locale |
 
 Le bandeau d'indicateurs de la section 1 est masqué par défaut (bouton « Indicateurs » dans
-l'en-tête de section, choix mémorisé). Une question se supprime par `🗑`, depuis la section 3 ou
+l'en-tête de section, choix mémorisé). Une question se supprime par `🗑`, depuis la section 5 ou
 depuis la carte de l'étape : seule la question part, l'étape reste.
 
 Une pièce jointe n'est pas une entité autonome : elle appartient à une étape de la chronologie

@@ -39,7 +39,7 @@ const shortcuts = [
         <li>Une pièce n'existe pas seule : elle appartient à une étape. <code>✕</code> la détache (l'étape reste),
           <code>✎</code> ouvre l'étape. « Renuméroter par date » comble ensuite les trous de numérotation.</li>
         <li>Questions générales : glisser définit l'ordre de priorité repris dans le courrier.</li>
-        <li>Toute question se supprime par <code>🗑</code> — depuis la section 3 ou depuis la carte de l'étape ;
+        <li>Toute question se supprime par <code>🗑</code> — depuis la section 5 ou depuis la carte de l'étape ;
           l'étape, elle, est conservée.</li>
         <li>Un fichier <code>.json</code> déposé sur la page est importé directement.</li>
       </ul>
