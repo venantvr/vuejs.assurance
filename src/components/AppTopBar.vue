@@ -12,7 +12,26 @@ const emit = defineEmits(['new-dossier', 'rename-dossier', 'delete-dossier', 'op
 const store = useDossiersStore()
 const ui = useUiStore()
 const files = useFiles()
-const { active, dossiersByRecent, saveState, saveError, canUndo, canRedo } = storeToRefs(store)
+const { active, dossiersByRecent, trash, saveState, saveError, canUndo, canRedo } = storeToRefs(store)
+
+function restore (dossier) {
+  const restored = store.restoreFromTrash(dossier.id)
+  openMenu.value = null
+  if (restored) ui.toast(`« ${restored.name} » restauré`)
+}
+
+function purge (dossier) {
+  openMenu.value = null
+  ui.confirm({
+    title: 'Effacer définitivement ?',
+    message: `« ${dossier.name} » sera retiré de la corbeille. Une sauvegarde automatique est prise juste avant, consultable dans Fichier ▸ Sauvegardes automatiques.`,
+    confirmLabel: 'Effacer',
+    onConfirm: () => {
+      store.purgeFromTrash(dossier.id)
+      ui.toast('Dossier effacé de la corbeille')
+    }
+  })
+}
 
 const openMenu = ref(null)
 const root = ref(null)
@@ -92,7 +111,20 @@ const saveLabels = {
           <button class="menu-item" @click="run(() => emit('new-dossier'))"><span class="ico">＋</span> Nouveau dossier…</button>
           <button class="menu-item" @click="run(() => { store.duplicateActive(); ui.toast('Dossier dupliqué') })"><span class="ico">⧉</span> Dupliquer ce dossier</button>
           <button class="menu-item" @click="run(() => emit('rename-dossier'))"><span class="ico">✎</span> Renommer…</button>
-          <button class="menu-item danger" @click="run(() => emit('delete-dossier'))"><span class="ico">🗑</span> Supprimer ce dossier</button>
+          <button class="menu-item danger" @click="run(() => emit('delete-dossier'))"><span class="ico">🗑</span> Mettre à la corbeille</button>
+          <template v-if="trash.length">
+            <div class="menu-sep" />
+            <div class="menu-label">Corbeille ({{ trash.length }}) — restaurable à tout moment</div>
+            <div v-for="dossier in trash" :key="dossier.id" class="menu-item trash-row">
+              <span class="ico">♻</span>
+              <span class="menu-main">
+                <span class="ellipsis">{{ dossier.name }}</span>
+                <span class="xsmall muted">{{ dossier.steps.length }} étapes · supprimé {{ formatRelative(dossier.deletedAt) }}</span>
+              </span>
+              <button class="btn btn-sm" title="Restaurer" @click.stop="restore(dossier)">Restaurer</button>
+              <button class="btn btn-sm btn-ghost btn-danger" title="Effacer définitivement" @click.stop="purge(dossier)">✕</button>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -120,6 +152,8 @@ const saveLabels = {
           <button class="menu-item" @click="pickFile('merge')"><span class="ico">⬆</span> Importer (ajouter à la base)</button>
           <button class="menu-item" @click="pickFile('replace')"><span class="ico">⬆</span> Importer dans le dossier courant</button>
           <div class="menu-sep" />
+          <button class="menu-item" @click="run(() => ui.openDialog('backups'))"><span class="ico">🕘</span> Sauvegardes automatiques…</button>
+          <div class="menu-sep" />
           <button class="menu-item" @click="run(() => emit('open-mail'))"><span class="ico">✉</span> Générer le courrier / mail</button>
           <button class="menu-item" @click="run(() => window.print())"><span class="ico">🖨</span> Imprimer / PDF<span class="grow" /><span class="xsmall muted">Ctrl+P</span></button>
         </div>
@@ -142,4 +176,6 @@ const saveLabels = {
 .ellipsis { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
 .menu-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .menu-main .ellipsis { max-width: 100%; }
+.trash-row { cursor: default; gap: 8px; }
+.trash-row:hover { background: transparent; }
 </style>

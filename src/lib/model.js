@@ -59,7 +59,8 @@ export function createCategory ({ label, short, icon, color } = {}, taken = []) 
     short: String(short || '').trim() || title.split(/[/(—-]/)[0].trim().slice(0, 22) || title,
     icon: String(icon || '').trim().slice(0, 3) || '•',
     color: CATEGORY_COLORS.some((c) => c.value === color) ? color : '#475569',
-    builtin: false
+    builtin: false,
+    deleted: false
   }
 }
 
@@ -72,6 +73,7 @@ export function sanitizeCategories (list) {
     if (taken.includes(raw.key)) continue
     const category = createCategory(raw, taken)
     if (raw.key && !taken.includes(String(raw.key))) category.key = String(raw.key)
+    category.deleted = Boolean(raw.deleted)
     taken.push(category.key)
     out.push(category)
   }

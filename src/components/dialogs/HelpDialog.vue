@@ -78,12 +78,16 @@ const shortcuts = [
     </section>
 
     <section>
-      <b class="small">Où sont mes données ?</b>
-      <p class="small muted">
-        Tout est stocké dans <b>votre navigateur</b> (localStorage, clé <code>{{ DB_KEY }}</code>) : rien n'est
-        envoyé sur internet. Vider les données du navigateur efface les dossiers — pensez à
-        <b>Fichier ▸ Sauvegarder (.json)</b> régulièrement.
-      </p>
+      <b class="small">Où sont mes données, et que se passe-t-il si… ?</b>
+      <ul class="small rules">
+        <li>Tout est stocké dans <b>votre navigateur</b> (localStorage, clé <code>{{ DB_KEY }}</code>) ; rien n'est envoyé sur internet.</li>
+        <li><b>Deux onglets ouverts</b> : les modifications sont fusionnées, jamais écrasées ; l'autre onglet se recharge.</li>
+        <li><b>Dossier supprimé</b> : il va à la corbeille (menu 📁), restaurable à tout moment.</li>
+        <li><b>Catégorie supprimée</b> : les étapes gardent leur classement (<code>⌀</code>), la catégorie se restaure dans ⚙ Catégories.</li>
+        <li><b>Mauvaise manipulation</b> : <kbd>Ctrl+Z</kbd> en session, puis <b>Fichier ▸ Sauvegardes automatiques</b> (copies prises avant vos modifications, restaurées en copie).</li>
+        <li><b>Stockage saturé ou illisible</b> : un bandeau vous propose de tout télécharger ; un contenu illisible est mis de côté, jamais écrasé.</li>
+        <li>Vider les données du navigateur efface tout de même l'ensemble : <b>Fichier ▸ Sauvegarder (.json)</b> reste la référence hors du navigateur.</li>
+      </ul>
     </section>
 
     <template #footer>
