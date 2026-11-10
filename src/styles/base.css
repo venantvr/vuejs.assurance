@@ -284,7 +284,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: now
 
 /* ---------- Bordereau ---------- */
 
-.bordereau { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 9px; }
+.bordereau { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 9px; }
 .pj-card {
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 10px 12px; background: var(--surface-2); display: flex; gap: 10px; align-items: flex-start;

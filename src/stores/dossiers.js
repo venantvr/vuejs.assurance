@@ -309,6 +309,20 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return source.length
   }
 
+  /**
+   * Détache la pièce d'une étape : le code et le nom sont vidés, l'étape reste
+   * dans la chronologie. Les autres numéros ne bougent pas (vos fichiers déjà
+   * renommés restent valables) ; « Renuméroter par date » comble les trous.
+   */
+  function detachAttachment (stepId) {
+    const step = active.value?.steps.find((s) => s.id === stepId)
+    if (!step) return
+    commit()
+    step.pjCode = ''
+    step.pjName = ''
+    touch()
+  }
+
   /* --------------------------------------------------------------- questions */
 
   function addGlobalQuestion () {
@@ -422,6 +436,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     setViewMode,
     nextPjCode,
     renumberAttachments,
+    detachAttachment,
     addGlobalQuestion,
     updateGlobalQuestion,
     removeGlobalQuestion,

@@ -133,6 +133,12 @@ function confirmRemove () {
             <b class="small">📎 Pièce justificative</b>
             <span class="grow" />
             <button class="btn btn-sm" @click="suggestPj">Numéro suivant</button>
+            <button
+              v-if="form.pjCode || form.pjName"
+              class="btn btn-sm btn-danger"
+              title="Retirer la pièce de cette étape"
+              @click="form.pjCode = ''; form.pjName = ''"
+            >✕ Détacher</button>
           </div>
           <div class="grid-2">
             <label class="field">

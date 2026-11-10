@@ -36,6 +36,8 @@ const shortcuts = [
       <ul class="small rules">
         <li>Chronologie : poignée <code>⠿</code> pour réordonner les étapes — le dossier bascule en <b>ordre manuel</b>.</li>
         <li>Bordereau : glisser une pièce <b>renumérote</b> tout le bordereau (PJ-01, PJ-02…).</li>
+        <li>Une pièce n'existe pas seule : elle appartient à une étape. <code>✕</code> la détache (l'étape reste),
+          <code>✎</code> ouvre l'étape. « Renuméroter par date » comble ensuite les trous de numérotation.</li>
         <li>Questions générales : glisser définit l'ordre de priorité repris dans le courrier.</li>
         <li>Un fichier <code>.json</code> déposé sur la page est importé directement.</li>
       </ul>
