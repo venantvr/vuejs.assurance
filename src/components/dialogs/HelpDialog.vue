@@ -57,12 +57,14 @@ const shortcuts = [
     </section>
 
     <section>
-      <b class="small">Acteurs</b>
+      <b class="small">Intervenants</b>
       <p class="small muted">
-        Le champ « Acteur / intervenant » puise dans un catalogue partagé par tous les dossiers :
+        Une étape peut citer <b>plusieurs intervenants</b> (assuré, expert, entreprise…). Le champ puise
+        dans un catalogue partagé par tous les dossiers :
         <code>▾</code> ouvre la liste, la frappe la filtre, « Mémoriser » y ajoute la saisie courante et
-        <code>✕</code> retire une entrée (les étapes qui la citent ne changent pas). Tout acteur saisi lors
-        de l'enregistrement d'une étape est mémorisé automatiquement.
+        <code>✕</code> retire une entrée (les étapes qui la citent ne changent pas). Tout intervenant saisi lors
+        de l'enregistrement d'une étape est mémorisé automatiquement. En capture rapide, séparez-les par
+        <code>&amp;</code> : <code>… | Assuré &amp; Expert judiciaire</code>.
       </p>
     </section>
 

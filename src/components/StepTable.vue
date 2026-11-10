@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { formatCurrency, formatDateFR } from '@/lib/format.js'
+import { actorsLabel } from '@/lib/model.js'
 
 const props = defineProps({ steps: { type: Array, required: true } })
 const store = useDossiersStore()
@@ -33,7 +34,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
             {{ step.fact }}
             <div v-if="step.question && !step.questionResolved" class="xsmall pending">● {{ step.question }}</div>
           </td>
-          <td>{{ step.actor }}</td>
+          <td>{{ actorsLabel(step) }}</td>
           <td class="num">{{ Number.parseFloat(step.amount) ? formatCurrency(step.amount) : '—' }}</td>
           <td>{{ step.impact }}</td>
           <td class="nowrap">{{ step.pjCode || '—' }}</td>

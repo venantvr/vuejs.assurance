@@ -117,11 +117,11 @@ function confirmRemove () {
           <span class="xsmall muted">Préférez « délai d'intervention de 6 jours » à « ils ont mis un temps interminable ».</span>
         </label>
 
-        <div class="grid-3">
-          <div class="field">
-            <span>Acteur / intervenant</span>
-            <ActorPicker v-model="form.actor" />
-          </div>
+        <div class="field actors-field">
+          <span>Intervenants</span>
+          <ActorPicker v-model="form.actors" />
+        </div>
+        <div class="grid-2">
           <label class="field">
             <span>Montant engagé (€)</span>
             <input v-model.number="form.amount" type="number" step="0.01" min="0" placeholder="0,00">
