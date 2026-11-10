@@ -29,7 +29,9 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
       >⠿</button>
       <span class="step-date">{{ formatDateFR(step.date) }}</span>
       <span v-if="step.time" class="muted xsmall">{{ step.time }}</span>
-      <span class="badge cat-badge" :style="{ '--cat': category.color }">{{ category.icon }} {{ category.short }}</span>
+      <span class="badge cat-badge" :style="{ '--cat': category.color }" :title="category.deleted ? 'Catégorie supprimée — restaurable via ⚙ Catégories' : ''">
+        {{ category.icon }} {{ category.short }}<template v-if="category.deleted"> ⌀</template>
+      </span>
       <span v-for="actor in step.actors" :key="actor" class="badge">👤 {{ actor }}</span>
       <span v-if="amount" class="badge badge-money">{{ formatCurrency(amount) }}</span>
 

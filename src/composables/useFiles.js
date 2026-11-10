@@ -14,7 +14,16 @@ export function useFiles () {
   function exportActive () {
     const dossier = store.active
     if (!dossier) return
-    const payload = { app: APP, kind: 'dossier', version: 1, exportedAt: new Date().toISOString(), dossier }
+    const payload = {
+      app: APP,
+      kind: 'dossier',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      dossier,
+      // catalogues joints : un dossier réimporté ailleurs garde ses catégories et ses intervenants
+      actors: store.actors,
+      categories: store.customCategoriesAll
+    }
     downloadFile(
       `assurance_${slugify(dossier.meta.ref || dossier.name)}_${todayISO()}.json`,
       JSON.stringify(payload, null, 2),
@@ -24,7 +33,16 @@ export function useFiles () {
   }
 
   function exportAll () {
-    const payload = { app: APP, kind: 'base', version: 1, exportedAt: new Date().toISOString(), dossiers: store.dossiers }
+    const payload = {
+      app: APP,
+      kind: 'base',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      dossiers: store.dossiers,
+      trash: store.trash,
+      actors: store.actors,
+      categories: store.customCategoriesAll
+    }
     downloadFile(
       `assurance_sauvegarde-complete_${todayISO()}.json`,
       JSON.stringify(payload, null, 2),

@@ -12,7 +12,7 @@ import { CATEGORY_COLORS, CATEGORY_SUGGESTIONS } from '@/lib/model.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
-const { categories } = storeToRefs(store)
+const { categories, deletedCategories } = storeToRefs(store)
 
 const draft = ref({ label: '', short: '', icon: '', color: CATEGORY_COLORS[4].value })
 
@@ -36,12 +36,12 @@ function remove (cat) {
   ui.confirm({
     title: `Supprimer « ${cat.short} » ?`,
     message: used
-      ? `${used} étape(s) utilisent cette catégorie : elles seront reclassées en « Administratif / Juridique ». Annulable avec Ctrl+Z.`
-      : 'Cette catégorie n’est utilisée par aucune étape.',
+      ? `${used} étape(s) gardent leur classement « ${cat.short} » (affiché comme supprimé) ; la catégorie reste restaurable ici. Annulable avec Ctrl+Z.`
+      : 'Cette catégorie n’est utilisée par aucune étape ; elle reste restaurable ici.',
     confirmLabel: 'Supprimer',
     onConfirm: () => {
-      const moved = store.removeCategory(cat.key)
-      ui.toast(moved ? `Catégorie supprimée, ${moved} étape(s) reclassée(s)` : 'Catégorie supprimée')
+      store.removeCategory(cat.key)
+      ui.toast(`Catégorie « ${cat.short} » supprimée — restaurable dans ce dialogue`)
     }
   })
 }
@@ -106,6 +106,21 @@ function isUsed (cat) {
           </div>
         </template>
       </div>
+    </section>
+
+    <section v-if="deletedCategories.length">
+      <b class="small">Catégories supprimées</b>
+      <div class="row suggestions">
+        <button
+          v-for="cat in deletedCategories"
+          :key="cat.key"
+          class="chip cat-chip"
+          :style="{ '--cat': cat.color }"
+          :title="`${isUsed(cat)} étape(s) la citent encore`"
+          @click="store.restoreCategory(cat.key); ui.toast(`Catégorie « ${cat.short} » restaurée`)"
+        >♻ {{ cat.icon }} {{ cat.short }} <span class="xsmall">({{ isUsed(cat) }})</span></button>
+      </div>
+      <p class="xsmall muted hint">Les étapes classées dans une catégorie supprimée gardent ce classement : un clic la restaure.</p>
     </section>
 
     <section>

@@ -22,11 +22,13 @@ import { useHotkeys } from './composables/useHotkeys.js'
 import { useFiles } from './composables/useFiles.js'
 import { useTimeline } from './composables/useTimeline.js'
 import { formatCurrency } from './lib/format.js'
+import BackupsDialog from './components/dialogs/BackupsDialog.vue'
+import { watch } from 'vue'
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const files = useFiles()
-const { active, attachments } = storeToRefs(store)
+const { active, attachments, saveState, saveError, preservedKey, externalEvents } = storeToRefs(store)
 const { kpis } = useTimeline()
 
 const capture = ref(null)
@@ -40,7 +42,18 @@ const printDate = new Date().toLocaleString('fr-FR', {
 
 onMounted(() => {
   store.init()
-  window.addEventListener('beforeunload', store.persistNow)
+  if (preservedKey.value) {
+    ui.toast(`Contenu local illisible mis de côté sous « ${preservedKey.value} » — rien n'a été effacé`, { type: 'error', duration: 12000 })
+  }
+})
+
+// Un autre onglet a écrit : l'état a été rechargé ou fusionné, l'historique local est reparti de zéro.
+watch(() => externalEvents.value.length, () => {
+  const last = externalEvents.value[externalEvents.value.length - 1]
+  if (!last) return
+  ui.toast(last.kind === 'merged'
+    ? 'Modifications d’un autre onglet fusionnées — rien n’a été écrasé'
+    : 'Données rechargées depuis un autre onglet')
 })
 
 useHotkeys({
@@ -95,6 +108,13 @@ function confirmDeleteDossier () {
       @open-mail="ui.openDialog('mail')"
     />
 
+    <div v-if="saveState === 'error'" class="save-alert no-print" role="alert">
+      <b>⚠ Enregistrement impossible</b> — {{ saveError }}. Vos modifications ne sont conservées qu'en mémoire :
+      téléchargez-les maintenant, puis libérez de l'espace (corbeille, sauvegardes) avant de fermer l'onglet.
+      <button class="btn btn-sm btn-primary" @click="files.exportAll()">⬇ Télécharger tout maintenant</button>
+      <button class="btn btn-sm" @click="store.persistNow()">Réessayer</button>
+    </div>
+
     <div v-if="active" class="print-only print-head">
       <h1>Journal d'audit chronologique de sinistre</h1>
       <p class="small">Document de synthèse factuelle, chiffrage et points d'arbitrage soumis à l'assureur — pièces numérotées.</p>
@@ -124,6 +144,7 @@ function confirmDeleteDossier () {
     <RenameDossierDialog v-if="ui.dialog === 'rename'" />
     <MailDialog v-if="ui.dialog === 'mail'" />
     <HelpDialog v-if="ui.dialog === 'help'" />
+    <BackupsDialog v-if="ui.dialog === 'backups'" />
     <ConfirmDialog v-if="ui.confirmBox" />
 
     <div v-if="isDraggingFile" class="dropzone">⬇ Déposez un fichier .json pour l'importer</div>
@@ -134,4 +155,12 @@ function confirmDeleteDossier () {
 
 <style scoped>
 .print-foot { border-top: 1px solid #b9c3d3; padding-top: 8px; }
+.save-alert {
+  position: sticky; top: 56px; z-index: 35;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 auto; max-width: 1280px; width: calc(100% - 40px);
+  background: var(--red-soft); color: var(--red);
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 12px; font-size: 13px;
+}
 </style>

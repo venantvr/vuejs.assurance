@@ -60,16 +60,31 @@ Une pièce jointe n'est pas une entité autonome : elle appartient à une étape
 Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une recherche est actif
 (l'ordre affiché serait partiel). Chaque déplacement est annulable (`Ctrl+Z`).
 
-## Données
+## Données : rien n'est jamais perdu
 
-- Base locale : `localStorage`, clé `vuejs_assurance_db_v1`, enregistrement automatique (300 ms).
-- Plusieurs dossiers en parallèle (créer / dupliquer / renommer / supprimer).
-- Reprise automatique des versions précédentes : clés `chronoassur_db_v2` et
-  `chronoassur_dossier_v1`, ainsi que leurs exports `.json`.
-- Sauvegarde fichier : dossier courant `.json`, base complète `.json`, chronologie `.csv`.
+- Base locale : `localStorage`, clé `vuejs_assurance_db_v1`, enregistrement automatique 300 ms après
+  chaque modification, **vidé immédiatement** à la fermeture, au changement d'onglet, à la mise en
+  veille mobile (`beforeunload`, `pagehide`, `blur`, `visibilitychange`). `navigator.storage.persist()`
+  est demandé pour éviter l'éviction par le navigateur.
+- **Deux onglets** : chaque écriture porte un numéro de révision. Une écriture concurrente est
+  détectée et **fusionnée** (dossier par dossier, puis étape par étape : l'union l'emporte sur la
+  suppression) au lieu d'écraser ; l'autre onglet se recharge et le signale.
+- **Corbeille** : supprimer un dossier le met à la corbeille (menu 📁), restaurable sans limite de
+  temps. L'effacement définitif prend une sauvegarde forcée juste avant.
+- **Catégories** : la suppression est douce — les étapes gardent leur classement (marqué `⌀`) et la
+  catégorie se restaure d'un clic dans ⚙ Catégories.
+- **Import dans le dossier courant** : la version remplacée part à la corbeille (« … (avant import) »).
+- **Sauvegardes automatiques** (Fichier ▸ Sauvegardes automatiques) : anneau de 8 copies de la base,
+  prises avant les modifications (au plus une toutes les deux minutes, toujours avant une action
+  destructive). Restaurer **ajoute** les dossiers en copies datées, rien n'est écrasé.
+- **Stockage illisible** (corruption, format d'une version future) : jamais écrasé, mis de côté sous
+  une clé horodatée et téléchargeable depuis le même dialogue.
+- **Quota saturé** : bandeau persistant avec téléchargement immédiat de toute la base.
+- Les exports `.json` embarquent dossiers, corbeille, catalogue d'intervenants et catégories ; un
+  dossier réimporté ailleurs garde donc ses catégories. Les anciennes clés `chronoassur_*` sont lues
+  mais jamais effacées.
 - Rien ne sort du navigateur : aucune requête réseau en dehors de la police Inter.
-- La correction orthographique du navigateur est désactivée sur toute l'application
-  (`spellcheck="false"`), les champs contenant des références et du vocabulaire métier.
+- Correction orthographique du navigateur désactivée sur toute l'application.
 
 ## Gains de temps
 

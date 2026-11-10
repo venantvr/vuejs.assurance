@@ -98,7 +98,7 @@ function confirmRemove () {
               <select v-model="form.category">
                 <option v-for="cat in categories" :key="cat.key" :value="cat.key">{{ cat.icon }} {{ cat.label }}</option>
                 <option v-if="!categories.some((c) => c.key === form.category)" :value="form.category">
-                  {{ form.category }} (catégorie supprimée)
+                  {{ store.category(form.category).icon }} {{ store.category(form.category).label }} (catégorie supprimée)
                 </option>
               </select>
               <button class="btn btn-sm btn-ghost" type="button" title="Ajouter ou modifier des catégories" @click="ui.openDialog('categories')">⚙</button>

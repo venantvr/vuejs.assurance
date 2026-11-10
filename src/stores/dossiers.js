@@ -9,7 +9,9 @@ import {
   cloneDossier, createCategory, createDossier, createQuestion, createStep,
   sanitizeCategories, sanitizeDossier, todayISO, uid
 } from '@/lib/model.js'
-import { loadDb, sanitizeActors, saveDb } from '@/lib/storage.js'
+import {
+  DB_KEY, listBackups, loadDb, readRawDb, readStoredDb, rotateBackup, sanitizeActors, saveDb
+} from '@/lib/storage.js'
 import { DOSSIER_TEMPLATES } from '@/lib/presets.js'
 
 const HISTORY_LIMIT = 80
@@ -18,6 +20,8 @@ const SAVE_DELAY = 300
 export const useDossiersStore = defineStore('dossiers', () => {
   const dossiers = ref([])
   const activeId = ref(null)
+  /** Dossiers supprimés : conservés ici, restaurables, jamais effacés d'office. */
+  const trash = ref([])
   /** Catalogue d'acteurs réutilisables, partagé par tous les dossiers. */
   const actors = ref([])
   /** Catégories personnalisées, en plus des cinq catégories natives. */
@@ -25,12 +29,19 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   const saveState = ref('saved') // saved | pending | error
   const saveError = ref('')
+  /** Clé sous laquelle un contenu illisible a été mis de côté au chargement. */
+  const preservedKey = ref(null)
+  /** Compteur d'événements externes (autre onglet) : l'interface s'en sert pour notifier. */
+  const externalEvents = ref([])
 
   const past = shallowRef([])
   const future = shallowRef([])
 
   let saveTimer = null
   let restoring = false
+  /** Révision de la base telle que lue ou écrite en dernier par cet onglet. */
+  let knownRev = null
+  let listenersBound = false
 
   /* ---------------------------------------------------------------- lecture */
 
@@ -62,13 +73,22 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   const knownActors = computed(() => sanitizeActors(actors.value))
 
-  /** Catégories natives puis personnalisées, dans l'ordre d'affichage. */
-  const categories = computed(() => [...BUILTIN_CATEGORIES, ...customCategories.value])
-  const categoryMap = computed(() => Object.fromEntries(categories.value.map((c) => [c.key, c])))
+  /** Catégories utilisables : natives puis personnalisées non supprimées. */
+  const categories = computed(() => [...BUILTIN_CATEGORIES, ...customCategories.value.filter((c) => !c.deleted)])
+  /** Catégories personnalisées supprimées (restaurables). */
+  const deletedCategories = computed(() => customCategories.value.filter((c) => c.deleted))
+  const categoryMap = computed(() => Object.fromEntries(
+    [...BUILTIN_CATEGORIES, ...customCategories.value].map((c) => [c.key, c])
+  ))
 
-  /** Descripteur d'une catégorie, avec repli si elle a été supprimée. */
+  /**
+   * Descripteur d'une catégorie. Une catégorie supprimée reste résolue (nom et
+   * couleur conservés, marquée « supprimée ») ; une clé inconnue tombe en repli.
+   */
   function category (key) {
-    return categoryMap.value[key] || { ...FALLBACK_CATEGORY, key: key || FALLBACK_CATEGORY.key }
+    const found = categoryMap.value[key]
+    if (found) return found
+    return { ...FALLBACK_CATEGORY, key: key || FALLBACK_CATEGORY.key }
   }
 
   /** Nombre d'étapes citant une catégorie, tous dossiers confondus. */
@@ -83,8 +103,37 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   /* ------------------------------------------------------------ persistance */
 
+  function currentDb () {
+    return {
+      activeId: activeId.value,
+      dossiers: dossiers.value,
+      trash: trash.value,
+      actors: actors.value,
+      categories: customCategories.value
+    }
+  }
+
   function snapshotState () {
-    return JSON.stringify({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value, categories: customCategories.value })
+    return JSON.stringify(currentDb())
+  }
+
+  /** Charge une base (stockée, fusionnée ou historique) dans l'état réactif. */
+  function loadIntoState (db) {
+    restoring = true
+    dossiers.value = db.dossiers.map((d) => sanitizeDossier(d))
+    trash.value = (db.trash || []).map((d) => ({ ...sanitizeDossier(d), deletedAt: d.deletedAt || new Date().toISOString() }))
+    activeId.value = db.activeId
+    actors.value = sanitizeActors(db.actors)
+    customCategories.value = sanitizeCategories(db.categories)
+    if (dossiers.value.length && !dossiers.value.some((d) => d.id === activeId.value)) {
+      activeId.value = dossiers.value[0].id
+    }
+    restoring = false
+  }
+
+  function clearHistory () {
+    past.value = []
+    future.value = []
   }
 
   function schedulePersist () {
@@ -96,30 +145,88 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   function persistNow () {
     clearTimeout(saveTimer)
-    const result = saveDb({ activeId: activeId.value, dossiers: dossiers.value, actors: actors.value, categories: customCategories.value })
-    saveState.value = result.ok ? 'saved' : 'error'
-    saveError.value = result.ok ? '' : result.error
+    saveTimer = null
+    const result = saveDb(currentDb(), knownRev)
+    if (result.ok) {
+      knownRev = result.rev
+      saveState.value = 'saved'
+      saveError.value = ''
+      if (result.merged) {
+        // Un autre onglet avait écrit entre-temps : la fusion est déjà stockée,
+        // on aligne la mémoire dessus. L'historique local ne décrit plus cet état.
+        loadIntoState(result.db)
+        clearHistory()
+        externalEvents.value = [...externalEvents.value, { at: Date.now(), kind: 'merged' }]
+      }
+      rotateBackup(readRawDb())
+    } else {
+      saveState.value = 'error'
+      saveError.value = result.error
+    }
     return result
   }
 
-  watch([dossiers, activeId, actors, customCategories], schedulePersist, { deep: true })
+  /** Recharge depuis le stockage si un autre onglet a écrit une révision plus récente. */
+  function reloadIfStale () {
+    const stored = readStoredDb()
+    if (!stored || stored.rev === knownRev) return false
+    if (saveState.value === 'pending') {
+      // on a des modifications en attente : l'enregistrement fusionnera
+      persistNow()
+      return true
+    }
+    loadIntoState(stored)
+    knownRev = stored.rev
+    clearHistory()
+    externalEvents.value = [...externalEvents.value, { at: Date.now(), kind: 'reloaded' }]
+    return true
+  }
+
+  function bindLifecycle () {
+    if (listenersBound || typeof window === 'undefined') return
+    listenersBound = true
+    const flush = () => { if (saveState.value === 'pending') persistNow() }
+    // Le tampon de 300 ms est vidé dès que l'onglet s'efface : fermeture, bascule
+    // d'onglet, mise en veille mobile, mise en cache arrière (bfcache)…
+    window.addEventListener('beforeunload', flush)
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('blur', flush)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush()
+      else reloadIfStale()
+    })
+    window.addEventListener('focus', reloadIfStale)
+    // Écriture par un autre onglet
+    window.addEventListener('storage', (event) => {
+      if (event.key === DB_KEY || event.key === null) reloadIfStale()
+    })
+    // Demande au navigateur de ne pas évincer ce stockage sous pression disque
+    try { navigator.storage?.persist?.() } catch { /* best effort */ }
+  }
+
+  watch([dossiers, activeId, trash, actors, customCategories], schedulePersist, { deep: true })
+
+  // Les champs de synthèse sont liés en v-model : on date la modification ici.
+  watch(
+    () => (active.value ? [active.value.id, JSON.stringify(active.value.meta)] : null),
+    (next, prev) => {
+      if (next && prev && next[0] === prev[0] && next[1] !== prev[1]) touch()
+    }
+  )
 
   /* --------------------------------------------------------------- historique */
 
   /** Enregistre l'état courant avant une modification annulable. */
-  function commit () {
+  function commit ({ backup = false, label = '' } = {}) {
     past.value = [...past.value, snapshotState()].slice(-HISTORY_LIMIT)
     future.value = []
+    // L'état d'avant la modification rejoint l'anneau de sauvegardes
+    // (toutes les deux minutes au plus, ou immédiatement si l'action est destructive).
+    rotateBackup(readRawDb(), { force: backup, label })
   }
 
   function applySnapshot (json) {
-    const parsed = JSON.parse(json)
-    restoring = true
-    dossiers.value = parsed.dossiers.map((d) => sanitizeDossier(d))
-    activeId.value = parsed.activeId
-    actors.value = sanitizeActors(parsed.actors)
-    customCategories.value = sanitizeCategories(parsed.categories)
-    restoring = false
+    loadIntoState(JSON.parse(json))
     schedulePersist()
   }
 
@@ -152,6 +259,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
   function demoDossier () {
     const template = DOSSIER_TEMPLATES.find((t) => t.id === 'DDE')
     const dossier = createDossier('Dossier de démonstration', template)
+    // identifiant fixe : deux onglets ouverts sur un stockage vide fusionnent en un seul démo
+    dossier.id = 'dos-demo'
     Object.assign(dossier.meta, {
       ref: 'Sinistre #2026-94810 / Contrat MRH-774201',
       parties: 'M. Martin (assuré) / Syndic GestiCopro / Entreprise AquaFuite',
@@ -172,15 +281,18 @@ export const useDossiersStore = defineStore('dossiers', () => {
   }
 
   function init () {
-    const db = loadDb()
-    restoring = true
-    dossiers.value = db.dossiers.length ? db.dossiers : [demoDossier()]
-    activeId.value = db.activeId && db.dossiers.length ? db.activeId : dossiers.value[0].id
+    const { db, preserved } = loadDb()
+    preservedKey.value = preserved
+    knownRev = preserved ? null : db.rev
+    if (!db.dossiers.length && !db.trash.length) {
+      db.dossiers = [demoDossier()]
+      db.activeId = db.dossiers[0].id
+    }
     // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
-    const used = dossiers.value.flatMap((d) => d.steps.flatMap((step) => step.actors))
-    actors.value = sanitizeActors([...(db.actors || []), ...used])
-    customCategories.value = sanitizeCategories(db.categories)
-    restoring = false
+    const used = db.dossiers.flatMap((d) => d.steps.flatMap((step) => step.actors))
+    db.actors = sanitizeActors([...(db.actors || []), ...used])
+    loadIntoState(db)
+    bindLifecycle()
     persistNow()
   }
 
@@ -215,13 +327,35 @@ export const useDossiersStore = defineStore('dossiers', () => {
     touch()
   }
 
+  /** Met le dossier actif à la corbeille (restaurable, jamais effacé d'office). */
   function removeActive () {
     if (!active.value) return
     commit()
     const id = activeId.value
+    const removed = dossiers.value.find((d) => d.id === id)
     dossiers.value = dossiers.value.filter((d) => d.id !== id)
+    trash.value = [{ ...removed, deletedAt: new Date().toISOString() }, ...trash.value]
     if (!dossiers.value.length) dossiers.value.push(createDossier('Nouveau dossier'))
     activeId.value = dossiers.value[0].id
+  }
+
+  function restoreFromTrash (id) {
+    const index = trash.value.findIndex((d) => d.id === id)
+    if (index < 0) return null
+    commit()
+    const { deletedAt, ...dossier } = trash.value[index]
+    trash.value = trash.value.filter((d) => d.id !== id)
+    if (dossiers.value.some((d) => d.id === dossier.id)) dossier.id = uid('dos')
+    dossier.updatedAt = new Date().toISOString()
+    dossiers.value.push(dossier)
+    activeId.value = dossier.id
+    return dossier
+  }
+
+  /** Effacement définitif : une sauvegarde forcée est prise juste avant. */
+  function purgeFromTrash (id) {
+    commit({ backup: true, label: 'avant effacement définitif' })
+    trash.value = trash.value.filter((d) => d.id !== id)
   }
 
   /* ------------------------------------------------------------- catégories */
@@ -249,19 +383,24 @@ export const useDossiersStore = defineStore('dossiers', () => {
    * Supprime une catégorie personnalisée. Les étapes qui la citaient sont
    * reclassées dans `fallbackKey` (aucune étape n'est perdue).
    */
-  function removeCategory (key, fallbackKey = 'ADMIN') {
-    if (BUILTIN_CATEGORIES.some((c) => c.key === key)) return 0
+  /**
+   * Suppression douce : la catégorie disparaît des listes mais les étapes gardent
+   * leur classement d'origine (affiché comme « supprimée ») et la catégorie reste
+   * restaurable.
+   */
+  function removeCategory (key) {
+    const target = customCategories.value.find((c) => c.key === key && !c.builtin)
+    if (!target) return 0
     commit()
-    let moved = 0
-    dossiers.value.forEach((d) => d.steps.forEach((step) => {
-      if (step.category === key) {
-        step.category = fallbackKey
-        moved += 1
-      }
-    }))
-    customCategories.value = customCategories.value.filter((c) => c.key !== key)
-    touch()
-    return moved
+    target.deleted = true
+    return categoryUsage(key)
+  }
+
+  function restoreCategory (key) {
+    const target = customCategories.value.find((c) => c.key === key)
+    if (!target) return
+    commit()
+    target.deleted = false
   }
 
   /* ---------------------------------------------------------------- acteurs */
@@ -463,17 +602,33 @@ export const useDossiersStore = defineStore('dossiers', () => {
    * Importe un fichier .json (base complète, dossier seul, ou export des
    * versions précédentes). mode : 'merge' (ajout) ou 'replace' (dossier courant).
    */
-  function importPayload (payload, { mode = 'merge', filename = 'Dossier importé' } = {}) {
+  function importPayload (payload, { mode = 'merge', filename = 'Dossier importé', asCopies = false, suffix = '' } = {}) {
     let incoming = []
     if (Array.isArray(payload?.dossiers)) incoming = payload.dossiers
     else if (payload?.dossier) incoming = [payload.dossier]
     else if (Array.isArray(payload?.steps) || payload?.meta) incoming = [payload]
     if (!incoming.length) return { ok: false, count: 0 }
 
-    commit()
+    commit({ backup: mode === 'replace', label: mode === 'replace' ? 'avant import dans le dossier courant' : '' })
     const fallback = String(filename).replace(/\.json$/i, '')
 
+    // Catalogues du fichier : réunis aux nôtres, jamais substitués
+    actors.value = sanitizeActors([...actors.value, ...(payload?.actors || [])])
+    const knownKeys = new Set(customCategories.value.map((c) => c.key))
+    sanitizeCategories(payload?.categories).forEach((c) => {
+      if (!knownKeys.has(c.key)) customCategories.value.push(c)
+    })
+    ;(Array.isArray(payload?.trash) ? payload.trash : []).forEach((raw) => {
+      const dossier = sanitizeDossier(raw, fallback)
+      if (!trash.value.some((d) => d.id === dossier.id) && !dossiers.value.some((d) => d.id === dossier.id)) {
+        trash.value.push({ ...dossier, deletedAt: raw.deletedAt || new Date().toISOString() })
+      }
+    })
+
     if (mode === 'replace' && active.value) {
+      // La version remplacée part à la corbeille : rien n'est perdu.
+      const previous = JSON.parse(JSON.stringify(active.value))
+      trash.value = [{ ...previous, id: uid('dos'), name: `${previous.name} (avant import)`, deletedAt: new Date().toISOString() }, ...trash.value]
       const merged = sanitizeDossier(incoming[0], fallback)
       merged.id = active.value.id
       merged.name = active.value.name
@@ -486,7 +641,12 @@ export const useDossiersStore = defineStore('dossiers', () => {
     let lastId = null
     incoming.forEach((raw) => {
       const dossier = sanitizeDossier(raw, fallback)
-      if (dossiers.value.some((d) => d.id === dossier.id)) dossier.id = uid('dos')
+      if (asCopies || dossiers.value.some((d) => d.id === dossier.id) || trash.value.some((d) => d.id === dossier.id)) {
+        dossier.id = uid('dos')
+        dossier.steps.forEach((s) => { s.id = uid('step') })
+        dossier.globalQuestions.forEach((q) => { q.id = uid('gq') })
+      }
+      if (suffix) dossier.name = `${dossier.name} ${suffix}`
       dossier.updatedAt = new Date().toISOString()
       dossiers.value.push(dossier)
       lastId = dossier.id
@@ -495,11 +655,30 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return { ok: true, count: incoming.length, mode }
   }
 
+  /** Sauvegardes automatiques disponibles (les plus récentes d'abord). */
+  function backups () {
+    return listBackups().map((b) => {
+      let count = 0
+      try { count = (JSON.parse(b.json).dossiers || []).length } catch { count = 0 }
+      return { at: b.at, label: b.label || '', dossiers: count, size: b.json.length, json: b.json }
+    })
+  }
+
+  /** Restaure une sauvegarde : ses dossiers sont ajoutés en copies datées, rien n'est écrasé. */
+  function restoreBackup (backup) {
+    const parsed = JSON.parse(backup.json)
+    const when = new Date(backup.at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    return importPayload(parsed, { mode: 'merge', asCopies: true, suffix: `(sauvegarde du ${when})` })
+  }
+
   return {
     dossiers,
     activeId,
+    trash,
     actors,
     categories,
+    deletedCategories,
+    customCategoriesAll: customCategories,
     categoryMap,
     category,
     categoryUsage,
@@ -510,6 +689,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
     knownActors,
     saveState,
     saveError,
+    preservedKey,
+    externalEvents,
     canUndo,
     canRedo,
     init,
@@ -522,9 +703,12 @@ export const useDossiersStore = defineStore('dossiers', () => {
     duplicateActive,
     renameActive,
     removeActive,
+    restoreFromTrash,
+    purgeFromTrash,
     addCategory,
     updateCategory,
     removeCategory,
+    restoreCategory,
     rememberActor,
     forgetActor,
     addStep,
@@ -544,6 +728,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
     reorderGlobalQuestions,
     setStepQuestion,
     clearStepQuestion,
-    importPayload
+    importPayload,
+    backups,
+    restoreBackup
   }
 })
