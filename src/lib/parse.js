@@ -6,7 +6,7 @@
  *   "hier relance: assureur sans réponse"
  *   "2026-09-12 déclaration du sinistre"
  */
-import { isoOf, todayISO } from './model.js'
+import { isoOf, splitActors, todayISO } from './model.js'
 
 const CATEGORY_ALIASES = {
   sinistre: 'SINISTRE',
@@ -60,7 +60,7 @@ export function parseQuickLine (line, categories = []) {
     time: '',
     category: null,
     fact: '',
-    actor: '',
+    actors: [],
     amount: 0,
     pjName: '',
     guessedDate: true,
@@ -75,7 +75,7 @@ export function parseQuickLine (line, categories = []) {
       const money = segment.match(/^(\d+(?:[.,]\d+)?)\s*(?:€|eur|euros)?$/i)
       if (money) result.amount = Number.parseFloat(money[1].replace(',', '.'))
       else if (/^PJ[\s:-]/i.test(segment)) result.pjName = segment.replace(/^PJ[\s:-]+/i, '').trim()
-      else if (!result.actor) result.actor = segment
+      else if (!result.actors.length) result.actors = splitActors(segment)
     }
   }
 
@@ -143,6 +143,6 @@ export function parseQuickLine (line, categories = []) {
 
   result.fact = text.replace(/^[\s:,-]+/, '').trim()
   if (!result.fact) return null
-  if (!result.category) result.category = guessCategory(`${result.fact} ${result.actor}`)
+  if (!result.category) result.category = guessCategory(`${result.fact} ${result.actors.join(' ')}`)
   return result
 }

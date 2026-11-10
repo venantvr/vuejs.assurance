@@ -177,7 +177,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     dossiers.value = db.dossiers.length ? db.dossiers : [demoDossier()]
     activeId.value = db.activeId && db.dossiers.length ? db.activeId : dossiers.value[0].id
     // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
-    const used = dossiers.value.flatMap((d) => d.steps.map((step) => step.actor))
+    const used = dossiers.value.flatMap((d) => d.steps.flatMap((step) => step.actors))
     actors.value = sanitizeActors([...(db.actors || []), ...used])
     customCategories.value = sanitizeCategories(db.categories)
     restoring = false
@@ -299,7 +299,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const step = createStep({ ...data, order: nextOrder() })
     if (step.pjName && !step.pjCode) step.pjCode = nextPjCode()
     active.value.steps.push(step)
-    rememberActor(step.actor)
+    step.actors.forEach(rememberActor)
     touch()
     return step
   }
@@ -311,7 +311,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const payload = { ...data, amount: Number.parseFloat(data.amount) || 0 }
     if (index >= 0) active.value.steps.splice(index, 1, payload)
     else active.value.steps.push({ ...payload, order: nextOrder() })
-    rememberActor(payload.actor)
+    ;(payload.actors || []).forEach(rememberActor)
     touch()
   }
 

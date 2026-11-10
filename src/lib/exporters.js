@@ -1,5 +1,5 @@
 /** Générateurs de sorties : CSV et brouillon de courrier à l'assureur. */
-import { CATEGORIES, todayISO } from './model.js'
+import { CATEGORIES, actorsLabel, todayISO } from './model.js'
 import { formatCurrency, formatDateFR, pjFilename } from './format.js'
 
 const byDate = (a, b) => `${a.date}T${a.time || '00:00'}`.localeCompare(`${b.date}T${b.time || '00:00'}`)
@@ -17,7 +17,7 @@ export function dossierToCsv (dossier) {
       step.time,
       CATEGORIES[step.category]?.short || step.category,
       step.fact,
-      step.actor,
+      actorsLabel(step),
       (Number.parseFloat(step.amount) || 0).toFixed(2).replace('.', ','),
       step.impact,
       step.pjCode,
@@ -56,7 +56,8 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
 
   for (const step of steps) {
     const details = []
-    if (step.actor) details.push(`intervenant : ${step.actor}`)
+    const who = actorsLabel(step)
+    if (who) details.push(`${who.includes('&') ? 'intervenants' : 'intervenant'} : ${who}`)
     if (Number.parseFloat(step.amount) > 0) details.push(`montant : ${formatCurrency(step.amount)}`)
     if (step.pjCode) details.push(step.pjCode)
     const suffix = details.length ? ` (${details.join(' ; ')})` : ''

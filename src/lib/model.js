@@ -115,6 +115,29 @@ export function daysBetween (isoA, isoB) {
   return Math.round((b - a) / 86400000)
 }
 
+/** Découpe une saisie libre en plusieurs intervenants (« Assuré & Syndic »). */
+export function splitActors (value) {
+  const raw = Array.isArray(value)
+    ? value
+    : String(value || '').split(/\s*(?:&|\+|;|,|\u00b7| \/ )\s*/)
+  const seen = new Set()
+  const out = []
+  for (const item of raw) {
+    const name = String(item || '').trim()
+    const key = name.toLowerCase()
+    if (name && !seen.has(key)) {
+      seen.add(key)
+      out.push(name)
+    }
+  }
+  return out
+}
+
+/** Libellé lisible des intervenants d'une étape. */
+export function actorsLabel (step) {
+  return splitActors(step?.actors ?? step?.actor).join(' & ')
+}
+
 export function createStep (overrides = {}) {
   return {
     id: uid('step'),
@@ -122,7 +145,7 @@ export function createStep (overrides = {}) {
     time: '',
     category: 'ADMIN',
     fact: '',
-    actor: '',
+    actors: [],
     amount: 0,
     impact: '',
     pjCode: '',
@@ -131,7 +154,8 @@ export function createStep (overrides = {}) {
     questionResolved: false,
     questionAnswer: '',
     order: 0,
-    ...overrides
+    ...overrides,
+    actors: splitActors(overrides.actors ?? overrides.actor ?? [])
   }
 }
 
@@ -149,7 +173,7 @@ export function createDossier (name = 'Nouveau dossier', template = null) {
         date: shiftISO(todayISO(), index - (template.steps.length - 1)),
         category: tpl.category,
         fact: tpl.fact,
-        actor: tpl.actor || '',
+        actors: splitActors(tpl.actors ?? tpl.actor),
         impact: tpl.impact || '',
         pjName: tpl.pjName || '',
         question: tpl.question || '',
@@ -215,7 +239,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       time: step.time || '',
       category: String(step.category || 'ADMIN').trim() || 'ADMIN',
       fact: step.fact || '',
-      actor: step.actor || '',
+      actors: splitActors(step.actors ?? step.actor),
       amount: Number.parseFloat(step.amount) || 0,
       impact: step.impact || '',
       pjCode: step.pjCode || '',

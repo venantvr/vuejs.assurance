@@ -23,7 +23,7 @@ function use (preset) {
           <span class="badge cat-badge" :style="{ '--cat': store.category(preset.category).color }">{{ store.category(preset.category).short }}</span>
         </span>
         <span>
-          <template v-if="preset.actor">Acteur proposé : {{ preset.actor }}</template>
+          <template v-if="preset.actor">Intervenant proposé : {{ preset.actor }}</template>
           <template v-if="preset.question"> · question d'arbitrage incluse</template>
           <template v-if="preset.pjName"> · pièce jointe numérotée automatiquement</template>
         </span>

@@ -80,9 +80,10 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
   échéance) peuvent être complétées par vos propres catégories — libellé, nom court, icône, couleur —
   partagées par tous les dossiers. Supprimer une catégorie reclasse ses étapes au lieu de les perdre.
   Suggestions prêtes à l'emploi : observation, question, expertise, chantier, désordre.
-- **Catalogue d'acteurs** : le champ « Acteur / intervenant » est un sélecteur alimenté
-  automatiquement à chaque étape enregistrée, partagé par tous les dossiers, filtrable à la frappe,
-  avec ajout explicite et suppression des entrées inutiles.
+- **Intervenants multiples** : une étape cite autant d'intervenants que nécessaire (assuré, expert,
+  entreprise…), sous forme de puces. Le catalogue est alimenté automatiquement à chaque étape
+  enregistrée, partagé par tous les dossiers, filtrable à la frappe, avec suppression des entrées
+  inutiles. En capture rapide : `… | Assuré & Expert judiciaire`.
 - **Modèles de sinistre** (dégât des eaux, incendie, vol, auto) : chronologie pré-rédigée,
   pièces déjà numérotées.
 - **Étapes types** : relance, expertise, proposition d'indemnisation, désaccord…

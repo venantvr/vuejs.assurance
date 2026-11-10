@@ -22,8 +22,8 @@ function submit () {
     ui.toast('Saisissez au moins la description du fait', { type: 'error' })
     return
   }
-  const { date, time, category, fact, actor, amount, pjName } = parsed.value
-  const step = store.addStep({ date, time, category, fact, actor, amount, pjName })
+  const { date, time, category, fact, actors, amount, pjName } = parsed.value
+  const step = store.addStep({ date, time, category, fact, actors, amount, pjName })
   line.value = ''
   ui.toast(`Étape ajoutée au ${formatDateFR(step.date)}`)
 }
@@ -59,7 +59,7 @@ defineExpose({ focus })
       <b>{{ formatDateFR(parsed.date) }}</b>
       <span v-if="parsed.time">{{ parsed.time }}</span>
       <span class="fact">{{ parsed.fact }}</span>
-      <span v-if="parsed.actor" class="badge">👤 {{ parsed.actor }}</span>
+      <span v-for="actor in parsed.actors" :key="actor" class="badge">👤 {{ actor }}</span>
       <span v-if="parsed.amount" class="badge badge-money">{{ formatCurrency(parsed.amount) }}</span>
       <span v-if="parsed.pjName" class="badge">📎 {{ parsed.pjName }}</span>
     </div>
