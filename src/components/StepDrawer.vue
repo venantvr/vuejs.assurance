@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
-import { createStep } from '@/lib/model.js'
+import { CHANNELS, createStep } from '@/lib/model.js'
 import { copyToClipboard, pjFilename } from '@/lib/format.js'
 import ActorPicker from './ActorPicker.vue'
 
@@ -121,7 +121,14 @@ function confirmRemove () {
           <span>Intervenants</span>
           <ActorPicker v-model="form.actors" />
         </div>
-        <div class="grid-2">
+        <div class="grid-3">
+          <label class="field">
+            <span>Canal / support</span>
+            <select v-model="form.channel">
+              <option value="">— non précisé —</option>
+              <option v-for="c in CHANNELS" :key="c.key" :value="c.key">{{ c.icon }} {{ c.label }}</option>
+            </select>
+          </label>
           <label class="field">
             <span>Montant engagé (€)</span>
             <input v-model.number="form.amount" type="number" step="0.01" min="0" placeholder="0,00">

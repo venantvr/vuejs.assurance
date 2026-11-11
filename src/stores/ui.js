@@ -18,6 +18,7 @@ export const useUiStore = defineStore('ui', () => {
   const category = ref('ALL')
   const onlyOpenQuestions = ref(false)
   const onlyWithoutPj = ref(false)
+  const channel = ref('ALL')
 
   // Dialogues
   const dialog = ref(null) // 'presets' | 'new-dossier' | 'help' | 'mail'
@@ -28,7 +29,7 @@ export const useUiStore = defineStore('ui', () => {
   let toastSeq = 0
 
   const filtersActive = computed(
-    () => Boolean(search.value.trim()) || category.value !== 'ALL' || onlyOpenQuestions.value || onlyWithoutPj.value
+    () => Boolean(search.value.trim()) || category.value !== 'ALL' || channel.value !== 'ALL' || onlyOpenQuestions.value || onlyWithoutPj.value
   )
 
   watch(theme, (value) => {
@@ -59,6 +60,7 @@ export const useUiStore = defineStore('ui', () => {
     category.value = 'ALL'
     onlyOpenQuestions.value = false
     onlyWithoutPj.value = false
+    channel.value = 'ALL'
   }
 
   function toast (message, { type = 'info', duration } = {}) {
@@ -108,6 +110,7 @@ export const useUiStore = defineStore('ui', () => {
     category,
     onlyOpenQuestions,
     onlyWithoutPj,
+    channel,
     filtersActive,
     dialog,
     drawerStep,

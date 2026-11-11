@@ -7,7 +7,7 @@ import StepTable from './StepTable.vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { useTimeline } from '@/composables/useTimeline.js'
-import { SORT_MODES, shiftISO } from '@/lib/model.js'
+import { CHANNELS, SORT_MODES, shiftISO } from '@/lib/model.js'
 import { copyToClipboard } from '@/lib/format.js'
 
 const store = useDossiersStore()
@@ -110,6 +110,10 @@ defineExpose({ focusSearch })
       <span class="grow" />
       <button class="chip" :class="{ on: ui.onlyOpenQuestions }" @click="ui.onlyOpenQuestions = !ui.onlyOpenQuestions">● Questions ouvertes</button>
       <button class="chip" :class="{ on: ui.onlyWithoutPj }" @click="ui.onlyWithoutPj = !ui.onlyWithoutPj">📎 Sans pièce jointe</button>
+      <select v-model="ui.channel" class="chip channel-filter" title="Filtrer par canal">
+        <option value="ALL">Tous canaux</option>
+        <option v-for="c in CHANNELS" :key="c.key" :value="c.key">{{ c.icon }} {{ c.short }}</option>
+      </select>
       <button v-if="ui.filtersActive" class="chip" @click="ui.resetFilters()">✕ Réinitialiser</button>
     </div>
 
@@ -190,5 +194,6 @@ defineExpose({ focusSearch })
 
 <style scoped>
 .search { width: 175px; }
+.channel-filter { width: auto; padding-right: 22px; }
 .filters { margin-bottom: 14px; }
 </style>

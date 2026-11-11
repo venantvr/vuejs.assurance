@@ -57,6 +57,15 @@ const shortcuts = [
     </section>
 
     <section>
+      <b class="small">Canal de l'échange</b>
+      <p class="small muted">
+        Chaque étape peut préciser son support — e-mail, <b>LRAR</b>, courrier, SMS, téléphone, réunion… — pour
+        prouver une notification ou dater un accord. En capture rapide il se déduit du texte ; le filtre
+        « Tous canaux » isole par exemple les seules lettres recommandées.
+      </p>
+    </section>
+
+    <section>
       <b class="small">Intervenants</b>
       <p class="small muted">
         Une étape peut citer <b>plusieurs intervenants</b> (assuré, expert, entreprise…). Le champ puise

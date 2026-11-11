@@ -525,3 +525,7 @@ p { margin: 0 0 0; }
   padding: 8px 10px; background: var(--surface);
 }
 .cat-row .cat-name { flex: 1; min-width: 0; }
+
+/* Canal / support d'un échange */
+.badge-channel { background: var(--surface); color: var(--text-soft); border-style: dashed; }
+.channel-LRAR { border-color: var(--red); color: var(--red); border-style: solid; font-weight: 700; }

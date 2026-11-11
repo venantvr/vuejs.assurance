@@ -1,5 +1,5 @@
 /** Générateurs de sorties : CSV et brouillon de courrier à l'assureur. */
-import { CATEGORIES, actorsLabel, todayISO } from './model.js'
+import { CATEGORIES, actorsLabel, channelOf, todayISO } from './model.js'
 import { formatCurrency, formatDateFR, pjFilename } from './format.js'
 
 const byDate = (a, b) => `${a.date}T${a.time || '00:00'}`.localeCompare(`${b.date}T${b.time || '00:00'}`)
@@ -9,7 +9,7 @@ function csvCell (value) {
 }
 
 export function dossierToCsv (dossier) {
-  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Question', 'Question résolue', 'Réponse']
+  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Question', 'Question résolue', 'Réponse']
   const rows = [header.map(csvCell).join(';')]
   for (const step of [...dossier.steps].sort(byDate)) {
     rows.push([
@@ -18,6 +18,7 @@ export function dossierToCsv (dossier) {
       CATEGORIES[step.category]?.short || step.category,
       step.fact,
       actorsLabel(step),
+      channelOf(step.channel)?.short || '',
       (Number.parseFloat(step.amount) || 0).toFixed(2).replace('.', ','),
       step.impact,
       step.pjCode,
@@ -58,6 +59,8 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     const details = []
     const who = actorsLabel(step)
     if (who) details.push(`${who.includes('&') ? 'intervenants' : 'intervenant'} : ${who}`)
+    const channel = channelOf(step.channel)
+    if (channel) details.push(`par ${channel.label.toLowerCase()}`)
     if (Number.parseFloat(step.amount) > 0) details.push(`montant : ${formatCurrency(step.amount)}`)
     if (step.pjCode) details.push(step.pjCode)
     const suffix = details.length ? ` (${details.join(' ; ')})` : ''

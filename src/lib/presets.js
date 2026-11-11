@@ -52,14 +52,14 @@ export const DOSSIER_TEMPLATES = [
 ]
 
 export const STEP_PRESETS = [
-  { category: 'BLOCAGE', fact: 'Relance écrite adressée au gestionnaire — absence de réponse depuis [X] jours sur [objet].', actor: 'Assuré', impact: "Dossier à l'arrêt", question: 'Pouvez-vous m’indiquer sous quel délai une décision de prise en charge sera rendue ?' },
-  { category: 'BLOCAGE', fact: 'Relance téléphonique — interlocuteur : [nom]. Engagement annoncé : [réponse obtenue].', actor: 'Assuré' },
+  { category: 'BLOCAGE', channel: 'LRAR', fact: 'Relance écrite adressée au gestionnaire — absence de réponse depuis [X] jours sur [objet].', actor: 'Assuré', impact: "Dossier à l'arrêt", question: 'Pouvez-vous m’indiquer sous quel délai une décision de prise en charge sera rendue ?' },
+  { category: 'BLOCAGE', channel: 'TEL', fact: 'Relance téléphonique — interlocuteur : [nom]. Engagement annoncé : [réponse obtenue].', actor: 'Assuré' },
   { category: 'ADMIN', fact: "Transmission des pièces complémentaires demandées par l'assureur : [liste].", actor: 'Assuré' },
   { category: 'ADMIN', fact: "Réception du courrier / mail de l'assureur : [contenu de la position prise].", actor: 'Assureur', pjName: 'Courrier-assureur' },
-  { category: 'ADMIN', fact: "Passage de l'expert mandaté par l'assureur. Points relevés : [observations].", actor: 'Expert assureur', pjName: 'Compte-rendu-expertise' },
+  { category: 'ADMIN', channel: 'REUNION', fact: "Passage de l'expert mandaté par l'assureur. Points relevés : [observations].", actor: 'Expert assureur', pjName: 'Compte-rendu-expertise' },
   { category: 'TECHNIQUE', fact: "Intervention d'urgence / mesure conservatoire : [nature des travaux].", actor: 'Entreprise' },
   { category: 'ADMIN', fact: 'Réception du devis / de la facture : [prestation].', actor: 'Entreprise', pjName: 'Devis-ou-facture' },
-  { category: 'ECHEANCE', fact: 'Rendez-vous à venir : [objet du rendez-vous].', actor: 'À confirmer' },
+  { category: 'ECHEANCE', channel: 'REUNION', fact: 'Rendez-vous à venir : [objet du rendez-vous].', actor: 'À confirmer' },
   { category: 'ADMIN', fact: "Réception de la proposition d'indemnisation : [montant et mode de calcul].", actor: 'Assureur', pjName: 'Proposition-indemnisation', question: 'Pouvez-vous me détailler le calcul de la vétusté appliquée et la franchise retenue ?' },
   { category: 'BLOCAGE', fact: 'Désaccord notifié sur [point] : [motif factuel du désaccord].', actor: 'Assuré', impact: "Point d'arbitrage ouvert" }
 ]

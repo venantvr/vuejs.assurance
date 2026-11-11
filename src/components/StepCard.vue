@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { formatCurrency, formatDateFR, pjFilename } from '@/lib/format.js'
+import { channelOf } from '@/lib/model.js'
 
 const props = defineProps({
   step: { type: Object, required: true },
@@ -14,6 +15,7 @@ const store = useDossiersStore()
 const category = computed(() => store.category(props.step.category))
 const amount = computed(() => Number.parseFloat(props.step.amount) || 0)
 const filename = computed(() => pjFilename(props.step))
+const channel = computed(() => channelOf(props.step.channel))
 const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !props.step.questionResolved)
 </script>
 
@@ -33,6 +35,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
         {{ category.icon }} {{ category.short }}<template v-if="category.deleted"> ⌀</template>
       </span>
       <span v-for="actor in step.actors" :key="actor" class="badge">👤 {{ actor }}</span>
+      <span v-if="channel" class="badge badge-channel" :class="`channel-${channel.key}`" :title="channel.label">{{ channel.icon }} {{ channel.short }}</span>
       <span v-if="amount" class="badge badge-money">{{ formatCurrency(amount) }}</span>
 
       <span class="step-acts no-print">

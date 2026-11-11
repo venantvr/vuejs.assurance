@@ -95,6 +95,10 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
   échéance) peuvent être complétées par vos propres catégories — libellé, nom court, icône, couleur —
   partagées par tous les dossiers. Supprimer une catégorie reclasse ses étapes au lieu de les perdre.
   Suggestions prêtes à l'emploi : observation, question, expertise, chantier, désordre.
+- **Canal de l'échange** sur chaque étape : e-mail, LRAR, courrier, SMS, téléphone, réunion, visio,
+  portail, main propre. Badge sur la carte (LRAR en rouge : c'est la preuve de notification), colonne
+  du tableau et du CSV, mention « par lettre recommandée… » dans le courrier, filtre par canal. En
+  capture rapide, le canal se déduit du texte (« LRAR au MOE », « appel du gestionnaire »).
 - **Intervenants multiples** : une étape cite autant d'intervenants que nécessaire (assuré, expert,
   entreprise…), sous forme de puces. Le catalogue est alimenté automatiquement à chaque étape
   enregistrée, partagé par tous les dossiers, filtrable à la frappe, avec suppression des entrées
