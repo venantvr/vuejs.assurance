@@ -109,7 +109,10 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
 - **Courrier généré** (synthèse ou relance) : objet, chronologie, total chiffré, points en attente
   de position écrite, bordereau — à copier ou télécharger.
 - **Indicateurs** : sommes engagées, faits sans preuve, questions ouvertes, « dernier mouvement
-  J+n » en alerte au-delà de 15 jours, écarts de délai entre étapes.
+  J+n » en alerte au-delà de 15 jours.
+- **Écarts de temps** entre deux étapes (« 72 jours plus tard »), désactivables d'un clic. L'écart
+  n'est signalé comme *délai opposable* que si l'étape précédente attendait une réponse : LRAR,
+  relance, question restée ouverte — un simple espacement du calendrier reste neutre.
 - **Impression A4** propre (`Ctrl+P`) : interface masquée, en-tête officiel, pied récapitulatif.
 
 ## Raccourcis
