@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { formatCurrency, formatDateFR } from '@/lib/format.js'
-import { actorsLabel } from '@/lib/model.js'
+import { actorsLabel, channelOf } from '@/lib/model.js'
 
 const props = defineProps({ steps: { type: Array, required: true } })
 const store = useDossiersStore()
@@ -17,7 +17,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
       <thead>
         <tr>
           <th>Date</th><th>Catégorie</th><th>Fait constaté</th><th>Acteur</th>
-          <th class="num">Montant</th><th>Impact</th><th>PJ</th><th class="no-print" />
+          <th>Canal</th><th class="num">Montant</th><th>Impact</th><th>PJ</th><th class="no-print" />
         </tr>
       </thead>
       <tbody>
@@ -35,6 +35,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
             <div v-if="step.question && !step.questionResolved" class="xsmall pending">● {{ step.question }}</div>
           </td>
           <td>{{ actorsLabel(step) }}</td>
+          <td class="nowrap">{{ channelOf(step.channel) ? `${channelOf(step.channel).icon} ${channelOf(step.channel).short}` : '—' }}</td>
           <td class="num">{{ Number.parseFloat(step.amount) ? formatCurrency(step.amount) : '—' }}</td>
           <td>{{ step.impact }}</td>
           <td class="nowrap">{{ step.pjCode || '—' }}</td>
@@ -46,7 +47,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="4" class="total-label">Total chiffré</td>
+          <td colspan="5" class="total-label">Total chiffré</td>
           <td class="num total-value">{{ formatCurrency(total) }}</td>
           <td colspan="3" />
         </tr>

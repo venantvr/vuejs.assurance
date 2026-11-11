@@ -4,6 +4,7 @@ import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { parseQuickLine } from '@/lib/parse.js'
 import { formatCurrency, formatDateFR } from '@/lib/format.js'
+import { channelOf } from '@/lib/model.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
@@ -22,8 +23,8 @@ function submit () {
     ui.toast('Saisissez au moins la description du fait', { type: 'error' })
     return
   }
-  const { date, time, category, fact, actors, amount, pjName } = parsed.value
-  const step = store.addStep({ date, time, category, fact, actors, amount, pjName })
+  const { date, time, category, fact, actors, channel, amount, pjName } = parsed.value
+  const step = store.addStep({ date, time, category, fact, actors, channel, amount, pjName })
   line.value = ''
   ui.toast(`Étape ajoutée au ${formatDateFR(step.date)}`)
 }
@@ -60,6 +61,7 @@ defineExpose({ focus })
       <span v-if="parsed.time">{{ parsed.time }}</span>
       <span class="fact">{{ parsed.fact }}</span>
       <span v-for="actor in parsed.actors" :key="actor" class="badge">👤 {{ actor }}</span>
+      <span v-if="channelOf(parsed.channel)" class="badge badge-channel">{{ channelOf(parsed.channel).icon }} {{ channelOf(parsed.channel).short }} (déduit)</span>
       <span v-if="parsed.amount" class="badge badge-money">{{ formatCurrency(parsed.amount) }}</span>
       <span v-if="parsed.pjName" class="badge">📎 {{ parsed.pjName }}</span>
     </div>

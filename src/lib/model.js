@@ -34,6 +34,24 @@ export const CATEGORY_SUGGESTIONS = [
   { label: 'Désordre constaté', short: 'Désordre', icon: '💥', color: '#dc2626' }
 ]
 
+/** Canal / support d'un échange : utile pour prouver une notification (LRAR) ou dater un accord. */
+export const CHANNELS = [
+  { key: 'EMAIL', label: 'E-mail', short: 'E-mail', icon: '✉' },
+  { key: 'LRAR', label: 'Lettre recommandée avec AR', short: 'LRAR', icon: '📨' },
+  { key: 'COURRIER', label: 'Courrier simple', short: 'Courrier', icon: '📮' },
+  { key: 'SMS', label: 'SMS / messagerie', short: 'SMS', icon: '📱' },
+  { key: 'TEL', label: 'Appel téléphonique', short: 'Téléphone', icon: '☎' },
+  { key: 'REUNION', label: 'Réunion / visite sur place', short: 'Réunion', icon: '🤝' },
+  { key: 'VISIO', label: 'Visioconférence', short: 'Visio', icon: '🎥' },
+  { key: 'PORTAIL', label: 'Espace client / portail en ligne', short: 'Portail', icon: '🌐' },
+  { key: 'MAIN_PROPRE', label: 'Remise en main propre', short: 'Main propre', icon: '🤲' }
+]
+export const CHANNEL_MAP = Object.fromEntries(CHANNELS.map((c) => [c.key, c]))
+
+export function channelOf (key) {
+  return CHANNEL_MAP[key] || null
+}
+
 /** Catégorie de repli quand une étape cite une catégorie supprimée. */
 export const FALLBACK_CATEGORY = { key: 'ADMIN', label: 'Catégorie inconnue', short: 'Non classé', icon: '•', color: '#475569' }
 
@@ -148,6 +166,7 @@ export function createStep (overrides = {}) {
     category: 'ADMIN',
     fact: '',
     actors: [],
+    channel: '',
     amount: 0,
     impact: '',
     pjCode: '',
@@ -242,6 +261,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       category: String(step.category || 'ADMIN').trim() || 'ADMIN',
       fact: step.fact || '',
       actors: splitActors(step.actors ?? step.actor),
+      channel: CHANNEL_MAP[step.channel] ? step.channel : '',
       amount: Number.parseFloat(step.amount) || 0,
       impact: step.impact || '',
       pjCode: step.pjCode || '',

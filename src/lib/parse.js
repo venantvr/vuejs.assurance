@@ -61,6 +61,7 @@ export function parseQuickLine (line, categories = []) {
     category: null,
     fact: '',
     actors: [],
+    channel: '',
     amount: 0,
     pjName: '',
     guessedDate: true,
@@ -139,6 +140,22 @@ export function parseQuickLine (line, categories = []) {
       result.pjName = pj[1]
       text = text.slice(0, pj.index).trim()
     }
+  }
+
+  // Canal : mot-clé explicite ("lrar", "mail", "sms", "tél", "réunion"…), le texte n'est pas modifié
+  const channelHints = [
+    ['LRAR', /\b(lrar|recommand[ée]e?s?( avec (ar|accus[ée]))?|ar\b)/i],
+    ['SMS', /\b(sms|texto|whatsapp|messagerie)\b/i],
+    ['EMAIL', /\b(e-?mails?|mails?|courriels?)\b/i],
+    ['TEL', /\b(t[ée]l[ée]phone|t[ée]l\.?|appel(le|é|ée)?|coup de fil)\b/i],
+    ['VISIO', /\b(visio(conf[ée]rence)?|teams|zoom|meet)\b/i],
+    ['REUNION', /\b(r[ée]union|rendez-vous|rdv|visite|sur place|sur site|expertise contradictoire)\b/i],
+    ['PORTAIL', /\b(espace client|portail|en ligne|site de l'assureur)\b/i],
+    ['MAIN_PROPRE', /\b(main propre|remis en main)\b/i],
+    ['COURRIER', /\b(courrier|lettre simple|lettre)\b/i]
+  ]
+  for (const [key, re] of channelHints) {
+    if (re.test(text)) { result.channel = key; break }
   }
 
   result.fact = text.replace(/^[\s:,-]+/, '').trim()

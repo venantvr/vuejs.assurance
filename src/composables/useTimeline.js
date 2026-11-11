@@ -16,6 +16,7 @@ export function useTimeline () {
       if (ui.category !== 'ALL' && step.category !== ui.category) return false
       if (ui.onlyOpenQuestions && !(step.question?.trim() && !step.questionResolved)) return false
       if (ui.onlyWithoutPj && (step.pjCode || step.pjName)) return false
+      if (ui.channel !== 'ALL' && (step.channel || '') !== ui.channel) return false
       if (!needle) return true
       const haystack = [step.fact, (step.actors || []).join(' '), step.impact, step.pjCode, step.pjName, step.question, step.questionAnswer, step.date]
         .join(' ').toLowerCase()
