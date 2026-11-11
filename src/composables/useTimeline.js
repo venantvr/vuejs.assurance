@@ -78,6 +78,11 @@ export function useTimeline () {
   })
 
   /** Écart en jours entre l'étape affichée et la précédente (null si < 2 jours). */
+  /**
+   * Écart avec l'étape précédente affichée. Il n'est qualifié de « délai »
+   * que si cette étape précédente attendait une réponse : LRAR, relance,
+   * question restée ouverte. Un simple espacement du calendrier reste neutre.
+   */
   function gapBefore (index) {
     if (index <= 0) return null
     const previous = visibleSteps.value[index - 1]
@@ -85,8 +90,16 @@ export function useTimeline () {
     if (!previous || !current) return null
     const gap = daysBetween(previous.date, current.date)
     if (gap === null) return null
-    const abs = Math.abs(gap)
-    return abs >= 2 ? abs : null
+    const days = Math.abs(gap)
+    if (days < 2) return null
+    const awaiting = previous.category === 'BLOCAGE' ||
+      previous.channel === 'LRAR' ||
+      Boolean(previous.question?.trim() && !previous.questionResolved)
+    let reason = ''
+    if (previous.channel === 'LRAR') reason = 'après une LRAR'
+    else if (previous.category === 'BLOCAGE') reason = 'après une relance'
+    else if (awaiting) reason = 'sur une question restée ouverte'
+    return { days, hot: awaiting && days >= 15, reason }
   }
 
   return { visibleSteps, countByCategory, openQuestions, kpis, gapBefore }

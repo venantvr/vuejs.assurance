@@ -12,6 +12,8 @@ export const useUiStore = defineStore('ui', () => {
   const density = ref(prefs.density === 'compact' ? 'compact' : 'cosy')
   // Bandeau d'indicateurs : masqué par défaut, l'essentiel est déjà dans la chronologie
   const showKpis = ref(prefs.showKpis === true)
+  /** Écarts de temps entre étapes : affichés par défaut, désactivables. */
+  const showGaps = ref(prefs.showGaps !== false)
 
   // Filtres de la chronologie
   const search = ref('')
@@ -44,6 +46,11 @@ export const useUiStore = defineStore('ui', () => {
 
   function toggleTheme () {
     theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  }
+
+  function toggleGaps () {
+    showGaps.value = !showGaps.value
+    savePrefs({ ...loadPrefs(), showGaps: showGaps.value })
   }
 
   function toggleKpis () {
@@ -106,6 +113,7 @@ export const useUiStore = defineStore('ui', () => {
     theme,
     density,
     showKpis,
+    showGaps,
     search,
     category,
     onlyOpenQuestions,
@@ -120,6 +128,7 @@ export const useUiStore = defineStore('ui', () => {
     toggleTheme,
     toggleDensity,
     toggleKpis,
+    toggleGaps,
     resetFilters,
     toast,
     dismissToast,
