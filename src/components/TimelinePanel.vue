@@ -114,6 +114,7 @@ defineExpose({ focusSearch })
         <option value="ALL">Tous canaux</option>
         <option v-for="c in CHANNELS" :key="c.key" :value="c.key">{{ c.icon }} {{ c.short }}</option>
       </select>
+      <button class="chip" :class="{ on: ui.showGaps }" title="Afficher l'écart de temps entre deux étapes" @click="ui.toggleGaps()">⟡ Écarts</button>
       <button v-if="ui.filtersActive" class="chip" @click="ui.resetFilters()">✕ Réinitialiser</button>
     </div>
 
@@ -150,8 +151,11 @@ defineExpose({ focusSearch })
         <template #item="{ element, index }">
           <div class="tl-item">
             <span class="tl-dot cat-dot" :style="{ '--cat': store.category(element.category).color }" />
-            <div v-if="!dragging && gapBefore(index) !== null" class="gap-note" :class="{ hot: gapBefore(index) >= 15 }">
-              ⟡ {{ gapBefore(index) }} jours d'écart<template v-if="gapBefore(index) >= 15"> — délai à justifier ou à opposer</template>
+            <div v-if="!dragging && ui.showGaps && gapBefore(index)" class="gap-note" :class="{ hot: gapBefore(index).hot }">
+              <template v-if="gapBefore(index).hot">
+                ⟡ {{ gapBefore(index).days }} jours sans réponse {{ gapBefore(index).reason }} — délai opposable
+              </template>
+              <template v-else>⟡ {{ gapBefore(index).days }} jours plus tard</template>
             </div>
             <StepCard
               :step="element"
