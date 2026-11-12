@@ -587,3 +587,6 @@ p { margin: 0 0 0; }
   .badge { border-color: #e3e7ee !important; }
   .cat-badge { background: transparent !important; }
 }
+@media print {
+  .print-hide, .empty { display: none !important; }
+}
