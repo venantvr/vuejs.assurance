@@ -24,7 +24,7 @@ function use (preset) {
         </span>
         <span>
           <template v-if="preset.actor">Intervenant proposé : {{ preset.actor }}</template>
-          <template v-if="preset.question"> · question d'arbitrage incluse</template>
+          <template v-if="preset.question"> · question incluse</template>
           <template v-if="preset.pjName"> · pièce jointe numérotée automatiquement</template>
         </span>
       </button>
