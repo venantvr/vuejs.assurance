@@ -54,6 +54,10 @@ function run (action) {
   action()
 }
 
+function printPage () {
+  window.print()
+}
+
 function pickFile (mode) {
   importMode.value = mode
   openMenu.value = null
@@ -155,7 +159,7 @@ const saveLabels = {
           <button class="menu-item" @click="run(() => ui.openDialog('backups'))"><span class="ico">🕘</span> Sauvegardes automatiques…</button>
           <div class="menu-sep" />
           <button class="menu-item" @click="run(() => emit('open-mail'))"><span class="ico">✉</span> Générer le courrier / mail</button>
-          <button class="menu-item" @click="run(() => window.print())"><span class="ico">🖨</span> Imprimer / PDF<span class="grow" /><span class="xsmall muted">Ctrl+P</span></button>
+          <button class="menu-item" @click="run(printPage)"><span class="ico">🖨</span> Imprimer / PDF<span class="grow" /><span class="xsmall muted">Ctrl+P</span></button>
         </div>
       </div>
 

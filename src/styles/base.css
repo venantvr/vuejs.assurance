@@ -529,3 +529,22 @@ p { margin: 0 0 0; }
 /* Canal / support d'un échange */
 .badge-channel { background: var(--surface); color: var(--text-soft); border-style: dashed; }
 .channel-LRAR { border-color: var(--red); color: var(--red); border-style: solid; font-weight: 700; }
+
+/* ---------- Parties & coordonnées ---------- */
+.parties { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.party-card {
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.party-card .party-head { display: flex; align-items: center; gap: 6px; }
+.party-card .party-role { flex: 1; min-width: 0; font-weight: 650; }
+.party-card input, .party-card textarea { font-size: 12.5px; padding: 6px 8px; background: var(--surface); }
+.party-card textarea { resize: none; }
+.party-print { display: none; }
+@media print {
+  .parties { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .party-card { break-inside: avoid; padding: 6px 8px; }
+  .party-card .party-head input, .party-card .field-row { display: none !important; }
+  .party-print { display: block; font-size: 9.5pt; line-height: 1.4; }
+  .party-print b { display: block; }
+}

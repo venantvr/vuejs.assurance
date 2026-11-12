@@ -53,7 +53,7 @@ async function copyAll () {
   <section v-if="active" class="card card-pad">
     <div class="sec-head">
       <span class="sec-bar no-print green" />
-      <h2>4. Bordereau des pièces jointes</h2>
+      <h2>5. Bordereau des pièces jointes</h2>
       <span class="badge">{{ attachments.length }} pièce(s)</span>
       <span class="grow" />
       <div class="row no-print">

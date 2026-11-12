@@ -52,6 +52,38 @@ export function channelOf (key) {
   return CHANNEL_MAP[key] || null
 }
 
+/** Rôles usuels d'une partie au dossier (suggestions de saisie). */
+export const PARTY_ROLES = [
+  'MOA', 'MOE', 'Assurance MOE', 'Expert MOE', 'Entrepreneur', 'Assurance entrepreneur',
+  'Assuré', 'Assureur', 'Expert assureur', 'Expert d\'assuré', 'Syndic', 'Avocat', 'Tiers'
+]
+
+export function createParty (overrides = {}) {
+  return {
+    id: uid('party'),
+    role: '',
+    name: '',
+    address: '',
+    identifiers: '',   // SIRET, SIREN, RCS…
+    references: '',    // n° de contrat, de client, de sinistre, d'assuré…
+    contact: '',       // téléphone, e-mail, interlocuteur
+    notes: '',
+    order: 0,
+    ...overrides
+  }
+}
+
+export function sanitizeParty (raw, index = 0) {
+  const p = createParty()
+  if (!raw || typeof raw !== 'object') return p
+  for (const key of ['role', 'name', 'address', 'identifiers', 'references', 'contact', 'notes']) {
+    p[key] = String(raw[key] ?? '').trim()
+  }
+  p.id = raw.id ? String(raw.id) : p.id
+  p.order = Number.isFinite(raw.order) ? raw.order : index
+  return p
+}
+
 /** Catégorie de repli quand une étape cite une catégorie supprimée. */
 export const FALLBACK_CATEGORY = { key: 'ADMIN', label: 'Catégorie inconnue', short: 'Non classé', icon: '•', color: '#475569' }
 
@@ -225,6 +257,7 @@ export function createDossier (name = 'Nouveau dossier', template = null) {
       status: ''
     },
     steps,
+    parties: [],
     globalQuestions: [],
     ui: { sortMode: 'DATE_ASC', viewMode: 'CARDS' }
   }
@@ -271,6 +304,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       questionAnswer: step.questionAnswer || '',
       order: Number.isFinite(step.order) ? step.order : index
     })),
+    parties: (Array.isArray(raw.parties) ? raw.parties : []).map((p, index) => sanitizeParty(p, index)),
     globalQuestions: questions.map((q, index) => createQuestion({
       id: q.id || uid('gq'),
       text: q.text || '',

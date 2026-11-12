@@ -5,6 +5,7 @@ import AppTopBar from './components/AppTopBar.vue'
 import SummaryPanel from './components/SummaryPanel.vue'
 import QuickCapture from './components/QuickCapture.vue'
 import QuestionsPanel from './components/QuestionsPanel.vue'
+import PartiesPanel from './components/PartiesPanel.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
 import BordereauPanel from './components/BordereauPanel.vue'
 import StepDrawer from './components/StepDrawer.vue'
@@ -124,6 +125,7 @@ function confirmDeleteDossier () {
     <main v-if="active">
       <SummaryPanel />
       <QuickCapture ref="capture" />
+      <PartiesPanel />
       <TimelinePanel ref="timeline" />
       <BordereauPanel />
       <QuestionsPanel />

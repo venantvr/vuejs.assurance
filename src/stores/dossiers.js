@@ -6,7 +6,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
   BUILTIN_CATEGORIES, FALLBACK_CATEGORY,
-  cloneDossier, createCategory, createDossier, createQuestion, createStep,
+  cloneDossier, createCategory, createDossier, createParty, createQuestion, createStep,
   sanitizeCategories, sanitizeDossier, todayISO, uid
 } from '@/lib/model.js'
 import {
@@ -542,6 +542,44 @@ export const useDossiersStore = defineStore('dossiers', () => {
     touch()
   }
 
+  /* ----------------------------------------------------------------- parties */
+
+  const parties = computed(() => [...(active.value?.parties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)))
+
+  function addParty (data = {}) {
+    if (!active.value) return null
+    commit()
+    if (!Array.isArray(active.value.parties)) active.value.parties = []
+    const party = createParty({ ...data, order: active.value.parties.length })
+    active.value.parties.push(party)
+    touch()
+    return party
+  }
+
+  function updateParty (id, patch) {
+    const party = active.value?.parties?.find((p) => p.id === id)
+    if (!party) return
+    Object.assign(party, patch)
+    touch()
+  }
+
+  function removeParty (id) {
+    if (!active.value) return
+    commit()
+    active.value.parties = (active.value.parties || []).filter((p) => p.id !== id)
+    touch()
+  }
+
+  function reorderParties (orderedIds) {
+    if (!active.value) return
+    commit()
+    orderedIds.forEach((id, index) => {
+      const party = active.value.parties.find((p) => p.id === id)
+      if (party) party.order = index
+    })
+    touch()
+  }
+
   /* --------------------------------------------------------------- questions */
 
   function addGlobalQuestion () {
@@ -728,6 +766,11 @@ export const useDossiersStore = defineStore('dossiers', () => {
     reorderGlobalQuestions,
     setStepQuestion,
     clearStepQuestion,
+    parties,
+    addParty,
+    updateParty,
+    removeParty,
+    reorderParties,
     importPayload,
     backups,
     restoreBackup

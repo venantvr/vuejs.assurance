@@ -50,6 +50,15 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     ? `Je reviens vers vous au sujet du sinistre suivant : ${dossier.meta.object}`
     : 'Je reviens vers vous au sujet du dossier référencé en objet.')
   if (dossier.meta.parties) lines.push(`Parties concernées : ${dossier.meta.parties}.`)
+  const parties = [...(dossier.parties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).filter((p) => p.name || p.role)
+  if (parties.length) {
+    lines.push('', '— PARTIES —')
+    for (const p of parties) {
+      const head = [p.role, p.name].filter(Boolean).join(' : ')
+      const extra = [p.address, p.identifiers, p.references, p.contact].filter(Boolean).join(' — ')
+      lines.push(`• ${head}${extra ? ` — ${extra}` : ''}`)
+    }
+  }
   if (dossier.meta.status) lines.push(`État actuel du dossier : ${dossier.meta.status}.`)
   lines.push('')
   lines.push("Afin de vous faire gagner du temps dans l'instruction, vous trouverez ci-dessous la chronologie factuelle des événements, chaque élément clé étant appuyé par une pièce justificative numérotée.")
