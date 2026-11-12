@@ -568,3 +568,22 @@ p { margin: 0 0 0; }
   /* un délai adossé à une question masquée n'a pas de sens sur le document */
   .gap-note.gap-question { display: none !important; }
 }
+
+/* ---------- Impression : boîtes complètes et discrètes ---------- */
+@media print {
+  /* la section n'est plus une boîte : un titre souligné suffit */
+  .card { border: 0 !important; padding: 0 !important; background: transparent !important; }
+  .sec-head { border-bottom: 1.2pt solid #d5dae2; padding-bottom: 4pt; margin-bottom: 8pt; }
+  /* les cartes : trait continu, un peu plus épais qu'à l'écran pour tenir à toute échelle, mais plus clair */
+  .step, .party-card, .kpi {
+    border: 1.2pt solid #dfe3ea !important;
+    border-radius: 4pt !important;
+    background: #fbfbfc !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .step.is-open-q { border-left: 1.2pt solid #dfe3ea !important; }
+  .tl-item { margin-bottom: 6pt; }
+  .badge { border-color: #e3e7ee !important; }
+  .cat-badge { background: transparent !important; }
+}
