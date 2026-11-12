@@ -151,7 +151,7 @@ defineExpose({ focusSearch })
         <template #item="{ element, index }">
           <div class="tl-item">
             <span class="tl-dot cat-dot" :style="{ '--cat': store.category(element.category).color }" />
-            <div v-if="!dragging && ui.showGaps && gapBefore(index)" class="gap-note" :class="{ hot: gapBefore(index).hot }">
+            <div v-if="!dragging && ui.showGaps && gapBefore(index)" class="gap-note" :class="{ hot: gapBefore(index).hot, 'gap-question': gapBefore(index).reason.includes('question') }">
               <template v-if="gapBefore(index).hot">
                 ⟡ {{ gapBefore(index).days }} jours sans réponse {{ gapBefore(index).reason }} — délai opposable
               </template>

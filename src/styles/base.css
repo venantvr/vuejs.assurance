@@ -564,3 +564,7 @@ p { margin: 0 0 0; }
   /* les questions et points d'arbitrage restent un outil de travail : hors du document imprimé */
   .questions-panel, .qbox { display: none !important; }
 }
+@media print {
+  /* un délai adossé à une question masquée n'a pas de sens sur le document */
+  .gap-note.gap-question { display: none !important; }
+}
