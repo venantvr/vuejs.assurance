@@ -560,8 +560,8 @@ p { margin: 0 0 0; }
   .sec-head { break-after: avoid; }
 }
 @media print {
-  /* les questions et points d'arbitrage restent un outil de travail : hors du document imprimé */
-  .questions-panel, .qbox { display: none !important; }
+  /* les questions sont regroupées en fin de document (section 5), pas dupliquées dans chaque étape */
+  .step .qbox { display: none !important; }
 }
 
 /* ---------- Impression : boîtes complètes et discrètes ---------- */
@@ -570,7 +570,7 @@ p { margin: 0 0 0; }
   .card { border: 0 !important; padding: 0 !important; background: transparent !important; }
   .sec-head { border-bottom: 1.2pt solid #d5dae2; padding-bottom: 4pt; margin-bottom: 8pt; }
   /* les cartes : trait continu, un peu plus épais qu'à l'écran pour tenir à toute échelle, mais plus clair */
-  .step, .party-card, .kpi {
+  .step, .party-card, .kpi, .qbox {
     border: 1.2pt solid #dfe3ea !important;
     border-radius: 4pt !important;
     background: #fbfbfc !important;
