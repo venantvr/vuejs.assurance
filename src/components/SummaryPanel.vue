@@ -24,6 +24,10 @@ const { kpis } = useTimeline()
     </div>
 
     <div class="grid-2 meta-grid">
+      <label class="field full">
+        <span>Projet / opération</span>
+        <input v-model="active.meta.project" placeholder="Ex : Extension ossature + pose d'ITE sur l'ancien bâti">
+      </label>
       <label class="field">
         <span>Référence sinistre / contrat</span>
         <input v-model="active.meta.ref" placeholder="Ex : Sinistre #2026-94810 / Contrat MRH-774201">
