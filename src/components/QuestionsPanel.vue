@@ -13,6 +13,9 @@ const { active } = storeToRefs(store)
 const { openQuestions, kpis } = useTimeline()
 
 const stepQuestions = computed(() => openQuestions.value.filter((q) => q.kind === 'step'))
+const hasPrintableQuestions = computed(() =>
+  stepQuestions.value.length > 0 || globalQuestions.value.some((q) => q.text?.trim())
+)
 
 /** Questions générales, réordonnables par glisser-déposer (ordre de priorité). */
 const globalQuestions = computed({
@@ -40,11 +43,11 @@ function removeQuestion (id) {
 </script>
 
 <template>
-  <section v-if="active" class="card card-pad questions-panel">
+  <section v-if="active" class="card card-pad questions-panel" :class="{ 'print-hide': !hasPrintableQuestions }">
     <div class="sec-head">
       <span class="sec-bar no-print violet" />
       <h2>5. Questions &amp; points d'arbitrage</h2>
-      <span class="badge" :class="kpis.open ? 'badge-BLOCAGE' : 'badge-ok'">{{ kpis.open }} en attente</span>
+      <span class="badge no-print" :class="kpis.open ? 'badge-BLOCAGE' : 'badge-ok'">{{ kpis.open }} en attente</span>
       <span class="grow" />
       <button class="btn btn-sm no-print" @click="addQuestion">＋ Question générale</button>
     </div>
@@ -70,15 +73,16 @@ function removeQuestion (id) {
         </div>
         <p class="text">{{ question.text }}</p>
         <input
-          class="input-flat answer"
+          class="input-flat answer no-print"
           :value="question.answer"
           placeholder="Réponse obtenue (date, canal, contenu)"
           @input="store.setStepQuestion(question.id, { questionAnswer: $event.target.value })"
         >
+        <p v-if="question.answer?.trim()" class="print-only answer field-print"><b>Réponse :</b> {{ question.answer }}</p>
       </div>
     </div>
 
-    <div v-if="globalQuestions.length" class="group">
+    <div v-if="globalQuestions.length" class="group" :class="{ 'print-hide': !globalQuestions.some((q) => q.text?.trim()) }">
       <p class="drag-hint no-print">⠿ Questions générales — glissez pour définir l'ordre de priorité dans le courrier généré.</p>
       <draggable
         v-model="globalQuestions"
@@ -94,7 +98,7 @@ function removeQuestion (id) {
         drag-class="sortable-drag"
       >
         <template #item="{ element }">
-          <div class="qbox" :class="{ done: element.status === 'RESOLVED' }">
+          <div class="qbox" :class="{ done: element.status === 'RESOLVED', 'print-hide': !element.text?.trim() }">
             <div class="row">
               <button class="drag-handle no-print" title="Glisser pour réordonner">⠿</button>
               <span class="badge" :class="element.status === 'RESOLVED' ? 'badge-ok' : 'badge-BLOCAGE'">
@@ -109,17 +113,19 @@ function removeQuestion (id) {
               <button class="btn btn-sm btn-ghost btn-danger no-print" title="Supprimer" @click="removeQuestion(element.id)">🗑</button>
             </div>
             <input
-              class="input-flat text strong"
+              class="input-flat text strong no-print"
               :value="element.text"
               placeholder="Ex : quelle franchise contractuelle s'applique si la responsabilité incombe à la copropriété ?"
               @input="store.updateGlobalQuestion(element.id, { text: $event.target.value })"
             >
+            <p class="print-only text strong">{{ element.text }}</p>
             <input
-              class="input-flat answer"
+              class="input-flat answer no-print"
               :value="element.answer"
               placeholder="Réponse obtenue (date, canal, contenu)"
               @input="store.updateGlobalQuestion(element.id, { answer: $event.target.value })"
             >
+            <p v-if="element.answer?.trim()" class="print-only answer field-print"><b>Réponse :</b> {{ element.answer }}</p>
           </div>
         </template>
       </draggable>
