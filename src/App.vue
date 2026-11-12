@@ -115,8 +115,8 @@ function confirmDeleteDossier () {
     <div v-if="active" class="print-only print-head">
       <h1>Journal d'audit chronologique de sinistre</h1>
       <p class="small">Chronologie factuelle du dossier et parties en présence.</p>
-      <p v-if="active.meta.project" class="small"><b>Projet :</b> {{ active.meta.project }}</p>
-      <p class="small muted">Édité le {{ printDate }} · Dossier : {{ active.meta.ref || active.name }}</p>
+      <p v-if="active.meta.project?.trim()" class="small"><b>Projet :</b> {{ active.meta.project }}</p>
+      <p class="small muted">Édité le {{ printDate }} · Dossier : {{ active.meta.ref?.trim() || active.name }}</p>
     </div>
 
     <main v-if="active">

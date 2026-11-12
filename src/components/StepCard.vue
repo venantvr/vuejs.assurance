@@ -34,7 +34,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
       <span class="badge cat-badge" :style="{ '--cat': category.color }" :title="category.deleted ? 'Catégorie supprimée — restaurable via ⚙ Catégories' : ''">
         {{ category.icon }} {{ category.short }}<template v-if="category.deleted"> ⌀</template>
       </span>
-      <span v-for="actor in step.actors" :key="actor" class="badge">👤 {{ actor }}</span>
+      <span v-for="actor in step.actors" :key="actor" class="badge badge-actor"><span class="actor-ico">👤</span> {{ actor }}</span>
       <span v-if="channel" class="badge badge-channel" :class="`channel-${channel.key}`" :title="channel.label">{{ channel.icon }} {{ channel.short }}</span>
       <span v-if="amount" class="badge badge-money">{{ formatCurrency(amount) }}</span>
 
@@ -48,7 +48,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
 
     <p class="step-fact">{{ step.fact }}</p>
 
-    <div class="step-foot">
+    <div class="step-foot" :class="{ 'print-hide': !step.impact && !step.pjCode && !step.pjName }">
       <span v-if="step.impact" class="badge">⇢ {{ step.impact }}</span>
       <button
         v-if="step.pjCode || step.pjName"
