@@ -76,7 +76,7 @@ defineExpose({ focusSearch })
 </script>
 
 <template>
-  <section v-if="active" class="card card-pad">
+  <section v-if="active" class="card card-pad" :class="{ 'print-hide': !visibleSteps.length }">
     <div class="sec-head">
       <span class="sec-bar no-print" />
       <h2>4. Chronologie factuelle</h2>

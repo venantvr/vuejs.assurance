@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
@@ -9,52 +10,56 @@ const store = useDossiersStore()
 const ui = useUiStore()
 const { active } = storeToRefs(store)
 const { kpis } = useTimeline()
+
+const META_KEYS = ['project', 'ref', 'parties', 'insurer', 'deductible', 'object', 'status']
+const hasField = (key) => Boolean(active.value?.meta?.[key]?.trim())
+const hasAnyMeta = computed(() => META_KEYS.some(hasField))
 </script>
 
 <template>
-  <section v-if="active" class="card card-pad">
+  <section v-if="active" class="card card-pad" :class="{ 'print-hide': !hasAnyMeta }">
     <div class="sec-head">
       <span class="sec-bar no-print" />
       <h2>1. Synthèse du dossier</h2>
       <span class="grow" />
-      <span v-if="active.meta.deductible" class="badge">Franchise : {{ active.meta.deductible }}</span>
+      <span v-if="hasField('deductible')" class="badge">Franchise : {{ active.meta.deductible }}</span>
       <button class="btn btn-sm no-print" :title="ui.showKpis ? 'Masquer les indicateurs' : 'Afficher les indicateurs'" @click="ui.toggleKpis()">
         {{ ui.showKpis ? '▾' : '▸' }} Indicateurs
       </button>
     </div>
 
-    <div class="grid-2 meta-grid">
-      <label class="field full">
+    <div class="grid-2 meta-grid" :class="{ 'print-hide': !hasAnyMeta }">
+      <label class="field full" :class="{ 'print-hide': !hasField('project') }">
         <span>Projet / opération</span>
         <input v-model="active.meta.project" placeholder="Ex : Extension ossature + pose d'ITE sur l'ancien bâti">
       </label>
-      <label class="field">
+      <label class="field" :class="{ 'print-hide': !hasField('ref') }">
         <span>Référence sinistre / contrat</span>
         <input v-model="active.meta.ref" placeholder="Ex : Sinistre #2026-94810 / Contrat MRH-774201">
       </label>
-      <label class="field">
+      <label class="field" :class="{ 'print-hide': !hasField('parties') }">
         <span>Parties concernées</span>
         <input v-model="active.meta.parties" placeholder="Ex : M. Martin (assuré) / Syndic GestiCopro">
       </label>
-      <label class="field">
+      <label class="field" :class="{ 'print-hide': !hasField('insurer') }">
         <span>Assureur / gestionnaire</span>
         <input v-model="active.meta.insurer" placeholder="Ex : Mutuelle X — M. Durand">
       </label>
-      <label class="field">
+      <label class="field" :class="{ 'print-hide': !hasField('deductible') }">
         <span>Franchise contractuelle</span>
         <input v-model="active.meta.deductible" placeholder="Ex : 150 € (dégât des eaux)">
       </label>
-      <label class="field full">
+      <label class="field full" :class="{ 'print-hide': !hasField('object') }">
         <span>Objet du sinistre (1 à 2 phrases factuelles)</span>
         <textarea v-model="active.meta.object" rows="2" placeholder="Ex : Dégât des eaux par infiltration au plafond du séjour suite à une fuite sur canalisation encastrée." />
       </label>
-      <label class="field full">
+      <label class="field full" :class="{ 'print-hide': !hasField('status') }">
         <span>État / point de blocage actuel</span>
         <input v-model="active.meta.status" placeholder="Ex : Attente de validation du devis de remise en état (1 840 €)">
       </label>
     </div>
 
-    <div v-if="ui.showKpis" class="kpis">
+    <div v-if="ui.showKpis" class="kpis no-print">
       <div class="kpi">
         <div class="k-label">Sommes engagées</div>
         <div class="k-value">{{ formatCurrency(kpis.total) }}</div>
