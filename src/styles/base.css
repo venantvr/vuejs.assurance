@@ -548,3 +548,19 @@ p { margin: 0 0 0; }
   .party-print { display: block; font-size: 9.5pt; line-height: 1.4; }
   .party-print b { display: block; }
 }
+
+/* ---------- Impression : boîtes entières, chronologie sans bruit ---------- */
+@media print {
+  .card { break-inside: auto; }                  /* une section peut s'étaler sur plusieurs pages… */
+  .timeline, .stack, .parties { display: block; } /* …mais pas ses boîtes : flex/grid cassent mal en impression */
+  .tl-item, .step, .party-card, .qbox, .kpi { break-inside: avoid; page-break-inside: avoid; display: block; margin-bottom: 8px; }
+  .parties { column-count: 2; column-gap: 8px; }
+  .party-card { width: 100%; }
+  .gap-note { display: none !important; }        /* « n jours plus tard » n'a rien à faire sur le document… */
+  .gap-note.hot { display: block !important; }   /* …sauf un délai opposable */
+  .sec-head { break-after: avoid; }
+}
+@media print {
+  /* les questions et points d'arbitrage restent un outil de travail : hors du document imprimé */
+  .questions-panel, .qbox { display: none !important; }
+}
