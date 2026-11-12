@@ -86,7 +86,7 @@ const saveLabels = {
         <div class="logo-mark">⚖</div>
         <div>
           <h1>vuejs.assurance</h1>
-          <p>Chronologie factuelle, pièces numérotées &amp; points d'arbitrage</p>
+          <p>Chronologie factuelle, pièces numérotées &amp; questions</p>
         </div>
       </div>
 

@@ -168,10 +168,10 @@ function confirmRemove () {
         </div>
 
         <div class="card card-pad question-card">
-          <b class="small">● Question / point d'arbitrage lié à cette étape</b>
+          <b class="small">● Question liée à cette étape</b>
           <label class="field question-field">
             <input v-model="form.question" placeholder="Ex : Confirmez-vous le remboursement des 285 € avancés au titre de la recherche de fuite ?">
-            <span class="xsmall muted">Remonte dans la section « Questions &amp; points d'arbitrage » (en bas de page) et dans le courrier généré.</span>
+            <span class="xsmall muted">Remonte dans la section « Questions » (en bas de page) et dans le courrier généré.</span>
           </label>
         </div>
       </div>

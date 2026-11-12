@@ -46,7 +46,7 @@ function removeQuestion (id) {
   <section v-if="active" class="card card-pad questions-panel" :class="{ 'print-hide': !hasPrintableQuestions }">
     <div class="sec-head">
       <span class="sec-bar no-print violet" />
-      <h2>5. Questions &amp; points d'arbitrage</h2>
+      <h2>5. Questions</h2>
       <span class="badge no-print" :class="kpis.open ? 'badge-BLOCAGE' : 'badge-ok'">{{ kpis.open }} en attente</span>
       <span class="grow" />
       <button class="btn btn-sm no-print" @click="addQuestion">＋ Question générale</button>
