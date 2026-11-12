@@ -7,7 +7,6 @@ import QuickCapture from './components/QuickCapture.vue'
 import QuestionsPanel from './components/QuestionsPanel.vue'
 import PartiesPanel from './components/PartiesPanel.vue'
 import TimelinePanel from './components/TimelinePanel.vue'
-import BordereauPanel from './components/BordereauPanel.vue'
 import StepDrawer from './components/StepDrawer.vue'
 import ToastHost from './components/ToastHost.vue'
 import CategoriesDialog from './components/dialogs/CategoriesDialog.vue'
@@ -21,16 +20,13 @@ import { useDossiersStore } from './stores/dossiers.js'
 import { useUiStore } from './stores/ui.js'
 import { useHotkeys } from './composables/useHotkeys.js'
 import { useFiles } from './composables/useFiles.js'
-import { useTimeline } from './composables/useTimeline.js'
-import { formatCurrency } from './lib/format.js'
 import BackupsDialog from './components/dialogs/BackupsDialog.vue'
 import { watch } from 'vue'
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const files = useFiles()
-const { active, attachments, saveState, saveError, preservedKey, externalEvents } = storeToRefs(store)
-const { kpis } = useTimeline()
+const { active, saveState, saveError, preservedKey, externalEvents } = storeToRefs(store)
 
 const capture = ref(null)
 const timeline = ref(null)
@@ -118,7 +114,7 @@ function confirmDeleteDossier () {
 
     <div v-if="active" class="print-only print-head">
       <h1>Journal d'audit chronologique de sinistre</h1>
-      <p class="small">Document de synthèse factuelle, chiffrage et points d'arbitrage soumis à l'assureur — pièces numérotées.</p>
+      <p class="small">Chronologie factuelle du dossier et parties en présence.</p>
       <p v-if="active.meta.project" class="small"><b>Projet :</b> {{ active.meta.project }}</p>
       <p class="small muted">Édité le {{ printDate }} · Dossier : {{ active.meta.ref || active.name }}</p>
     </div>
@@ -128,15 +124,8 @@ function confirmDeleteDossier () {
       <QuickCapture ref="capture" />
       <PartiesPanel />
       <TimelinePanel ref="timeline" />
-      <BordereauPanel />
+      <!-- Bordereau des pièces : mis de côté pour l'instant (composant conservé) -->
       <QuestionsPanel />
-
-      <div class="print-only small muted print-foot">
-        Document établi par l'assuré — chronologie factuelle, sans appréciation.
-        Total des sommes engagées : {{ formatCurrency(kpis.total) }} ·
-        {{ attachments.length }} pièce(s) jointe(s) ·
-        {{ kpis.open }} point(s) d'arbitrage en attente de réponse écrite.
-      </div>
     </main>
 
     <StepDrawer />
