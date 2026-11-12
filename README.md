@@ -95,6 +95,10 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
   échéance) peuvent être complétées par vos propres catégories — libellé, nom court, icône, couleur —
   partagées par tous les dossiers. Supprimer une catégorie reclasse ses étapes au lieu de les perdre.
   Suggestions prêtes à l'emploi : observation, question, expertise, chantier, désordre.
+- **Parties & coordonnées** (encart avant la chronologie) : pour chaque intervenant — MOA, MOE,
+  assureurs, experts, entreprises — rôle, nom, adresse, identifiants (SIRET, RCS), références (contrat,
+  sinistre, n° d'assuré), contact. Réordonnable par glisser-déposer, imprimé en tête du dossier, repris
+  dans le courrier généré, copiable en un bloc.
 - **Canal de l'échange** sur chaque étape : e-mail, LRAR, courrier, SMS, téléphone, réunion, visio,
   portail, main propre. Badge sur la carte (LRAR en rouge : c'est la preuve de notification), colonne
   du tableau et du CSV, mention « par lettre recommandée… » dans le courrier, filtre par canal. En

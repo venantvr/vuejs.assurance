@@ -39,7 +39,7 @@ const shortcuts = [
         <li>Une pièce n'existe pas seule : elle appartient à une étape. <code>✕</code> la détache (l'étape reste),
           <code>✎</code> ouvre l'étape. « Renuméroter par date » comble ensuite les trous de numérotation.</li>
         <li>Questions générales : glisser définit l'ordre de priorité repris dans le courrier.</li>
-        <li>Toute question se supprime par <code>🗑</code> — depuis la section 5 ou depuis la carte de l'étape ;
+        <li>Toute question se supprime par <code>🗑</code> — depuis la section 6 ou depuis la carte de l'étape ;
           l'étape, elle, est conservée.</li>
         <li>Un fichier <code>.json</code> déposé sur la page est importé directement.</li>
       </ul>
@@ -53,6 +53,15 @@ const shortcuts = [
         modifier et de les supprimer. Supprimer une catégorie reclasse ses étapes en « Administratif /
         Juridique » plutôt que de les perdre. Le nom court sert aussi de préfixe en capture rapide
         (<code>observation: fissure en façade nord</code>).
+      </p>
+    </section>
+
+    <section>
+      <b class="small">Parties &amp; coordonnées</b>
+      <p class="small muted">
+        L'encart « Parties » (avant la chronologie) rassemble, pour chaque intervenant, rôle, nom, adresse,
+        identifiants (SIRET, RCS), références (contrat, sinistre, n° d'assuré) et contact. Il s'imprime en tête
+        du dossier et figure dans le courrier généré. Les cartes se réordonnent par glisser-déposer.
       </p>
     </section>
 

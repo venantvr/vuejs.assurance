@@ -79,7 +79,7 @@ defineExpose({ focusSearch })
   <section v-if="active" class="card card-pad">
     <div class="sec-head">
       <span class="sec-bar no-print" />
-      <h2>3. Chronologie factuelle</h2>
+      <h2>4. Chronologie factuelle</h2>
       <span class="badge">{{ visibleSteps.length }} / {{ active.steps.length }} affichés</span>
       <span class="grow" />
       <div class="row no-print">
