@@ -250,6 +250,7 @@ export function createDossier (name = 'Nouveau dossier', template = null) {
     updatedAt: now,
     meta: {
       project: '',
+      comment: '',
       ref: '',
       parties: '',
       insurer: '',
@@ -282,6 +283,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
     updatedAt: raw.updatedAt || base.updatedAt,
     meta: {
       project: meta.project || '',
+      comment: meta.comment || '',
       ref: meta.ref || '',
       parties: meta.parties || '',
       insurer: meta.insurer || '',

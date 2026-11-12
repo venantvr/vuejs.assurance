@@ -47,6 +47,7 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
   lines.push(`Objet : ${dossier.meta.ref ? `${dossier.meta.ref} — ` : ''}${subject}`)
   lines.push('', 'Madame, Monsieur,', '')
   if (dossier.meta.project) lines.push(`Projet : ${dossier.meta.project}.`)
+  if (dossier.meta.comment) lines.push(`Commentaires : ${dossier.meta.comment}.`)
   lines.push(dossier.meta.object
     ? `Je reviens vers vous au sujet du sinistre suivant : ${dossier.meta.object}`
     : 'Je reviens vers vous au sujet du dossier référencé en objet.')
