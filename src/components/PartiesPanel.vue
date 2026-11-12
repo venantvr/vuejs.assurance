@@ -35,6 +35,9 @@ function remove (party) {
   ui.toast(`Partie « ${party.role || party.name || 'sans nom'} » retirée — Ctrl+Z pour annuler`)
 }
 
+/** Une partie sans aucun contenu n'a rien à faire sur le document imprimé. */
+const isEmpty = (p) => !['role', 'name', 'address', 'identifiers', 'references', 'contact', 'notes'].some((k) => (p[k] || '').trim())
+
 function asText (p) {
   return [p.role && `${p.role} :`, p.name, p.address, p.identifiers, p.references, p.contact, p.notes]
     .filter(Boolean).join('\n')
@@ -48,11 +51,11 @@ async function copyAll () {
 </script>
 
 <template>
-  <section v-if="active" class="card card-pad">
+  <section v-if="active" class="card card-pad" :class="{ 'print-hide': !parties.some((p) => !isEmpty(p)) }">
     <div class="sec-head">
       <span class="sec-bar no-print" />
       <h2>3. Parties &amp; coordonnées</h2>
-      <span class="badge">{{ parties.length }} partie(s)</span>
+      <span class="badge no-print">{{ parties.length }} partie(s)</span>
       <span class="grow" />
       <div class="row no-print">
         <button class="btn btn-sm" :disabled="!parties.length" @click="copyAll">⧉ Copier le bloc</button>
@@ -83,7 +86,7 @@ async function copyAll () {
       drag-class="sortable-drag"
     >
       <template #item="{ element: p }">
-        <div class="party-card">
+        <div class="party-card" :class="{ 'print-hide': isEmpty(p) }">
           <div class="party-head">
             <button class="drag-handle no-print" title="Glisser pour réordonner">⠿</button>
             <input
