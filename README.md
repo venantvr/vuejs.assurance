@@ -79,6 +79,26 @@ scope `https://www.googleapis.com/auth/drive.readonly`). L'application reste 100
   (colonne « Lien PJ »), le bordereau copié et le courrier généré (« consultable : … »).
 - seules les URL `http(s)` sont acceptées (toute autre forme est rejetée à la saisie et à l'import).
 
+## Synchronisation chiffrée (Cloudflare, facultative)
+
+Fichier ▸ **Synchronisation chiffrée…** : la base peut être sauvegardée/synchronisée sur le
+déploiement Cloudflare existant, **chiffrée de bout en bout** — le serveur ne stocke que des
+enveloppes AES-GCM 256 illisibles (clé dérivée d'une passphrase par PBKDF2 600 k itérations,
+qui ne quitte jamais le navigateur et n'est jamais stockée).
+
+- **Worker** : `worker/index.js` répond sur `/api/sync` (même origine uniquement : aucun CORS).
+  Chaque écriture porte une révision ; une écriture concurrente renvoie 409 et c'est le client,
+  seul capable de déchiffrer, qui fusionne (mêmes règles sans perte que deux onglets) puis renvoie.
+  Un historique de révisions est gardé 30 jours dans KV.
+- **Activation** (sinon l'API répond « non configuré » et l'app reste 100 % locale) :
+  1. `npx wrangler kv namespace create SYNC_KV` puis coller l'id dans `wrangler.toml` ;
+  2. `npx wrangler secret put SYNC_TOKEN` (longue chaîne aléatoire, à coller dans le dialogue) ;
+  3. recommandé : placer le domaine derrière **Cloudflare Access** (Zero Trust).
+- **Récupérer et fusionner** n'écrase jamais l'état local (union dossier par dossier, annulable
+  Ctrl+Z, sauvegarde forcée prise avant la fusion).
+- Passphrase perdue = enveloppes distantes illisibles : les exports `.json` restent la vraie
+  porte de sortie. Le jeton serveur est une préférence locale, jamais exporté.
+
 ## Données : rien n'est jamais perdu
 
 - Base locale : `localStorage`, clé `vuejs_assurance_db_v1`, enregistrement automatique 300 ms après
