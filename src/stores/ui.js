@@ -14,6 +14,11 @@ export const useUiStore = defineStore('ui', () => {
   const showKpis = ref(prefs.showKpis === true)
   /** Écarts de temps entre étapes : affichés par défaut, désactivables. */
   const showGaps = ref(prefs.showGaps !== false)
+  /**
+   * Jeton d'accès Google Drive (lecture). Préférence locale du navigateur :
+   * jamais inclus dans la base, les exports .json ou le courrier généré.
+   */
+  const driveToken = ref(typeof prefs.driveToken === 'string' ? prefs.driveToken : '')
 
   // Filtres de la chronologie
   const search = ref('')
@@ -51,6 +56,11 @@ export const useUiStore = defineStore('ui', () => {
   function toggleGaps () {
     showGaps.value = !showGaps.value
     savePrefs({ ...loadPrefs(), showGaps: showGaps.value })
+  }
+
+  function setDriveToken (value) {
+    driveToken.value = String(value || '').trim()
+    savePrefs({ ...loadPrefs(), driveToken: driveToken.value })
   }
 
   function toggleKpis () {
@@ -114,6 +124,8 @@ export const useUiStore = defineStore('ui', () => {
     density,
     showKpis,
     showGaps,
+    driveToken,
+    setDriveToken,
     search,
     category,
     onlyOpenQuestions,

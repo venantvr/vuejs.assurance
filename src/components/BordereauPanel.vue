@@ -42,7 +42,7 @@ async function copyAll () {
     return
   }
   const text = attachments.value
-    .map((s) => `${s.pjCode || 'PJ'} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}`)
+    .map((s) => `${s.pjCode || 'PJ'} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}${s.pjUrl ? ` — ${s.pjUrl}` : ''}`)
     .join('\n')
   const ok = await copyToClipboard(text)
   ui.toast(ok ? `Bordereau copié (${attachments.value.length} pièces)` : 'Copie impossible', { type: ok ? 'info' : 'error' })
@@ -84,6 +84,14 @@ async function copyAll () {
               <span class="badge badge-ECHEANCE nowrap">{{ element.pjCode || 'PJ' }}</span>
               <span class="pj-title">{{ element.pjName || 'Document' }}</span>
               <span class="pj-acts no-print">
+                <a
+                  v-if="element.pjUrl"
+                  class="btn btn-sm btn-ghost"
+                  :href="element.pjUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Ouvrir la pièce (Google Drive)"
+                >🔗</a>
                 <button class="btn btn-sm btn-ghost" title="Copier le nom de fichier" @click="copyOne(element)">⧉</button>
                 <button class="btn btn-sm btn-ghost" title="Ouvrir l'étape rattachée" @click="ui.openDrawer(element)">✎</button>
                 <button class="btn btn-sm btn-ghost btn-danger" title="Détacher cette pièce (l'étape est conservée)" @click="detach(element)">✕</button>

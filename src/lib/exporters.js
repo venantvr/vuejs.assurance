@@ -9,7 +9,7 @@ function csvCell (value) {
 }
 
 export function dossierToCsv (dossier) {
-  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Question', 'Question résolue', 'Réponse']
+  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Lien PJ', 'Question', 'Question résolue', 'Réponse']
   const rows = [header.map(csvCell).join(';')]
   for (const step of [...dossier.steps].sort(byDate)) {
     rows.push([
@@ -23,6 +23,7 @@ export function dossierToCsv (dossier) {
       step.impact,
       step.pjCode,
       step.pjName,
+      step.pjUrl,
       step.question,
       step.question ? (step.questionResolved ? 'oui' : 'non') : '',
       step.questionAnswer
@@ -40,14 +41,19 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     ...dossier.globalQuestions.filter((q) => q.status !== 'RESOLVED' && q.text.trim()).map((q) => q.text)
   ]
 
+  // Champs libres multilignes : ramenés sur une ligne pour ne pas casser le courrier.
+  const oneLine = (value) => String(value || '').replace(/\s+/g, ' ').trim()
+  const reference = oneLine(dossier.meta.ref)
+  const comment = oneLine(dossier.meta.comment)
+
   const lines = []
   const subject = kind === 'RELANCE'
     ? "relance et point d'avancement du dossier"
     : 'chronologie factuelle et pièces justificatives'
-  lines.push(`Objet : ${dossier.meta.ref ? `${dossier.meta.ref} — ` : ''}${subject}`)
+  lines.push(`Objet : ${reference ? `${reference} — ` : ''}${subject}`)
   lines.push('', 'Madame, Monsieur,', '')
-  if (dossier.meta.project) lines.push(`Projet : ${dossier.meta.project}.`)
-  if (dossier.meta.comment) lines.push(`Commentaires : ${dossier.meta.comment}.`)
+  if (dossier.meta.project) lines.push(`Projet : ${oneLine(dossier.meta.project)}.`)
+  if (comment) lines.push(`Commentaires : ${comment}${/[.!?…]$/.test(comment) ? '' : '.'}`)
   lines.push(dossier.meta.object
     ? `Je reviens vers vous au sujet du sinistre suivant : ${dossier.meta.object}`
     : 'Je reviens vers vous au sujet du dossier référencé en objet.')
@@ -90,7 +96,7 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
   const attachments = steps.filter((s) => s.pjCode)
   if (attachments.length) {
     lines.push('', '— BORDEREAU DES PIÈCES JOINTES —')
-    attachments.forEach((s) => lines.push(`${s.pjCode} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}`))
+    attachments.forEach((s) => lines.push(`${s.pjCode} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}${s.pjUrl ? ` — consultable : ${s.pjUrl}` : ''}`))
   }
 
   lines.push('')
@@ -102,6 +108,6 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
   }
   lines.push('')
   lines.push("Dans l'attente de votre retour, je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.")
-  lines.push('', '[Nom, prénom]', `[Référence : ${dossier.meta.ref || 'à compléter'}]`, '[Téléphone / courriel]')
+  lines.push('', '[Nom, prénom]', `[Référence : ${reference || 'à compléter'}]`, '[Téléphone / courriel]')
   return lines.join('\n')
 }
