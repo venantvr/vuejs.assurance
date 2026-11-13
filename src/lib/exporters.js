@@ -41,14 +41,19 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     ...dossier.globalQuestions.filter((q) => q.status !== 'RESOLVED' && q.text.trim()).map((q) => q.text)
   ]
 
+  // Champs libres multilignes : ramenés sur une ligne pour ne pas casser le courrier.
+  const oneLine = (value) => String(value || '').replace(/\s+/g, ' ').trim()
+  const reference = oneLine(dossier.meta.ref)
+  const comment = oneLine(dossier.meta.comment)
+
   const lines = []
   const subject = kind === 'RELANCE'
     ? "relance et point d'avancement du dossier"
     : 'chronologie factuelle et pièces justificatives'
-  lines.push(`Objet : ${dossier.meta.ref ? `${dossier.meta.ref} — ` : ''}${subject}`)
+  lines.push(`Objet : ${reference ? `${reference} — ` : ''}${subject}`)
   lines.push('', 'Madame, Monsieur,', '')
-  if (dossier.meta.project) lines.push(`Projet : ${dossier.meta.project}.`)
-  if (dossier.meta.comment) lines.push(`Commentaires : ${dossier.meta.comment}.`)
+  if (dossier.meta.project) lines.push(`Projet : ${oneLine(dossier.meta.project)}.`)
+  if (comment) lines.push(`Commentaires : ${comment}${/[.!?…]$/.test(comment) ? '' : '.'}`)
   lines.push(dossier.meta.object
     ? `Je reviens vers vous au sujet du sinistre suivant : ${dossier.meta.object}`
     : 'Je reviens vers vous au sujet du dossier référencé en objet.')
@@ -103,6 +108,6 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
   }
   lines.push('')
   lines.push("Dans l'attente de votre retour, je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.")
-  lines.push('', '[Nom, prénom]', `[Référence : ${dossier.meta.ref || 'à compléter'}]`, '[Téléphone / courriel]')
+  lines.push('', '[Nom, prénom]', `[Référence : ${reference || 'à compléter'}]`, '[Téléphone / courriel]')
   return lines.join('\n')
 }
