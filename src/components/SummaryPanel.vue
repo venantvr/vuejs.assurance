@@ -28,7 +28,7 @@ const hasAnyMeta = computed(() => META_KEYS.some(hasField))
       </button>
     </div>
 
-    <div class="grid-2 meta-grid" :class="{ 'print-hide': !hasAnyMeta }">
+    <div class="grid-2 meta-grid">
       <label class="field full" :class="{ 'print-hide': !hasField('project') }">
         <span>Projet / opération</span>
         <input v-model="active.meta.project" placeholder="Ex : Extension ossature + pose d'ITE sur l'ancien bâti">

@@ -553,7 +553,7 @@ p { margin: 0 0 0; }
 @media print {
   .card { break-inside: auto; }                  /* une section peut s'étaler sur plusieurs pages… */
   .timeline, .stack, .parties { display: block; } /* …mais pas ses boîtes : flex/grid cassent mal en impression */
-  .tl-item, .step, .party-card, .qbox, .kpi { break-inside: avoid; page-break-inside: avoid; display: block; margin-bottom: 8px; }
+  .tl-item, .step, .party-card, .qbox { break-inside: avoid; page-break-inside: avoid; display: block; margin-bottom: 8px; }
   .parties { column-count: 2; column-gap: 8px; }
   .party-card { width: 100%; }
   .gap-note { display: none !important; }        /* aucun écart ou mention de retard sur le document imprimé */
@@ -570,20 +570,22 @@ p { margin: 0 0 0; }
   .card { border: 0 !important; padding: 0 !important; background: transparent !important; }
   .sec-head { border-bottom: 1.2pt solid #d5dae2; padding-bottom: 4pt; margin-bottom: 8pt; }
   /* les cartes : trait continu, un peu plus épais qu'à l'écran pour tenir à toute échelle, mais plus clair */
-  .step, .party-card, .kpi, .qbox {
+  .step, .qbox {
     border: 1.2pt solid #dfe3ea !important;
     border-radius: 4pt !important;
     background: #fbfbfc !important;
     box-shadow: none !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  .party-card, .kpi {
+  .party-card {
     border: 0.8pt solid #e8ecf2 !important;
+    border-radius: 4pt !important;
     background: transparent !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .party-print { color: #475569; }
   .party-print b { color: #1e293b; font-weight: 600; }
-  .kpi.alert .k-value { color: #334155 !important; }
   .step.is-open-q { border-left: 1.2pt solid #dfe3ea !important; }
   .tl-item { margin-bottom: 6pt; }
   .badge { border-color: #e3e7ee !important; background: transparent !important; }
