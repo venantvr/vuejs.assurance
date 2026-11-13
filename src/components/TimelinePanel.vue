@@ -12,7 +12,7 @@ import { copyToClipboard } from '@/lib/format.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
-const { active, categories } = storeToRefs(store)
+const { active, categories, orderedSteps } = storeToRefs(store)
 const { visibleSteps, countByCategory, gapBefore } = useTimeline()
 
 const searchInput = ref(null)
@@ -76,7 +76,7 @@ defineExpose({ focusSearch })
 </script>
 
 <template>
-  <section v-if="active" class="card card-pad" :class="{ 'print-hide': !visibleSteps.length }">
+  <section v-if="active" class="card card-pad" :class="{ 'print-hide': !active.steps.length }">
     <div class="sec-head">
       <span class="sec-bar no-print" />
       <h2>4. Chronologie factuelle</h2>
@@ -133,7 +133,7 @@ defineExpose({ focusSearch })
       <draggable
         v-model="draggableSteps"
         class="timeline"
-        :class="{ 'dragging-active': dragging }"
+        :class="{ 'dragging-active': dragging, 'no-print': ui.filtersActive }"
         item-key="id"
         handle=".drag-handle"
         :animation="180"
@@ -178,12 +178,20 @@ defineExpose({ focusSearch })
     <!-- Vue tableau -->
     <StepTable
       v-else-if="visibleSteps.length"
+      :class="{ 'no-print': ui.filtersActive }"
       :steps="visibleSteps"
       @edit="ui.openDrawer($event)"
       @remove="confirmRemove"
     />
 
-    <div v-else class="empty">
+    <!-- Impression : un filtre d'écran n'ampute jamais le document — la chronologie complète est imprimée -->
+    <div v-if="ui.filtersActive && active.steps.length" class="print-only timeline" aria-hidden="true">
+      <div v-for="step in orderedSteps" :key="'print-' + step.id" class="tl-item">
+        <StepCard :step="step" />
+      </div>
+    </div>
+
+    <div v-if="!visibleSteps.length" class="empty">
       <b>{{ active.steps.length ? 'Aucune étape ne correspond aux filtres' : 'La chronologie est vide' }}</b>
       <template v-if="active.steps.length">
         <button class="btn btn-sm" @click="ui.resetFilters()">Réinitialiser les filtres</button>

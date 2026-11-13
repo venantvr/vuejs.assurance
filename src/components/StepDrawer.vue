@@ -3,9 +3,10 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
-import { CHANNELS, createStep } from '@/lib/model.js'
+import { CHANNELS, createStep, safeUrl } from '@/lib/model.js'
 import { copyToClipboard, pjFilename } from '@/lib/format.js'
 import ActorPicker from './ActorPicker.vue'
+import DrivePicker from './DrivePicker.vue'
 
 const store = useDossiersStore()
 const ui = useUiStore()
@@ -14,12 +15,14 @@ const { categories } = storeToRefs(store)
 
 const form = ref(null)
 const factField = ref(null)
+const showDrive = ref(false)
 
 const isNew = computed(() => !form.value?.id || !store.active?.steps.some((s) => s.id === form.value.id))
 const filename = computed(() => (form.value ? pjFilename(form.value) : ''))
 
 watch(drawerStep, async (payload) => {
   form.value = payload ? { ...createStep(), ...JSON.parse(JSON.stringify(payload)) } : null
+  showDrive.value = false
   if (!form.value) return
   await nextTick()
   factField.value?.focus()
@@ -38,6 +41,12 @@ function save () {
     ui.toast('La date est obligatoire', { type: 'error' })
     return
   }
+  const link = safeUrl(form.value.pjUrl)
+  if (form.value.pjUrl?.trim() && !link) {
+    ui.toast('Le lien de la pièce doit être une URL http(s) valide', { type: 'error' })
+    return
+  }
+  form.value.pjUrl = link
   if (isNew.value) {
     const { id, order, ...data } = form.value
     store.addStep(data)
@@ -51,6 +60,14 @@ function save () {
 
 function suggestPj () {
   form.value.pjCode = store.nextPjCode()
+}
+
+/** Sélection d'un fichier Drive : le lien est posé, le nom comble le champ vide. */
+function linkDriveFile ({ name, url }) {
+  form.value.pjUrl = url
+  if (!form.value.pjName.trim() && name) form.value.pjName = name
+  showDrive.value = false
+  ui.toast('Pièce liée au fichier Google Drive')
 }
 
 async function copyFilename () {
@@ -145,10 +162,10 @@ function confirmRemove () {
             <span class="grow" />
             <button class="btn btn-sm" @click="suggestPj">Numéro suivant</button>
             <button
-              v-if="form.pjCode || form.pjName"
+              v-if="form.pjCode || form.pjName || form.pjUrl"
               class="btn btn-sm btn-danger"
               title="Retirer la pièce de cette étape"
-              @click="form.pjCode = ''; form.pjName = ''"
+              @click="form.pjCode = ''; form.pjName = ''; form.pjUrl = ''"
             >✕ Détacher</button>
           </div>
           <div class="grid-2">
@@ -165,6 +182,24 @@ function confirmRemove () {
             {{ filename }}
             <button class="btn btn-sm btn-ghost" @click="copyFilename">⧉ copier</button>
           </div>
+          <div class="field link-field">
+            <span>Lien vers la pièce (Google Drive ou autre URL)</span>
+            <div class="row link-row">
+              <input v-model="form.pjUrl" class="grow" placeholder="https://drive.google.com/…">
+              <a
+                v-if="safeUrl(form.pjUrl)"
+                class="btn btn-sm btn-ghost"
+                :href="safeUrl(form.pjUrl)"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Ouvrir le lien dans un nouvel onglet"
+              >↗</a>
+              <button class="btn btn-sm" type="button" @click="showDrive = !showDrive">
+                {{ showDrive ? 'Fermer Drive' : '🔍 Chercher sur Drive' }}
+              </button>
+            </div>
+          </div>
+          <DrivePicker v-if="showDrive" @pick="linkDriveFile" />
         </div>
 
         <div class="card card-pad question-card">
@@ -195,6 +230,9 @@ function confirmRemove () {
 .sub-card { background: var(--surface-2); }
 .head-row { margin-bottom: 9px; }
 .filename { margin-top: 9px; }
+.link-field { margin-top: 9px; }
+.link-row { gap: 6px; }
+.link-row input { min-width: 0; }
 .question-card { background: var(--violet-soft); border-color: color-mix(in srgb, var(--violet) 25%, transparent); }
 .question-field { margin-top: 9px; }
 .faded { opacity: .75; }
