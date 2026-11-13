@@ -32,7 +32,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
           </td>
           <td class="fact">
             {{ step.fact }}
-            <div v-if="step.question && !step.questionResolved" class="xsmall pending">● {{ step.question }}</div>
+            <div v-if="step.question && !step.questionResolved" class="xsmall pending no-print">● {{ step.question }}</div>
           </td>
           <td>{{ actorsLabel(step) }}</td>
           <td class="nowrap">{{ channelOf(step.channel) ? `${channelOf(step.channel).icon} ${channelOf(step.channel).short}` : '—' }}</td>
