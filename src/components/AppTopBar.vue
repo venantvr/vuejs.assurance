@@ -157,6 +157,7 @@ const saveLabels = {
           <button class="menu-item" @click="pickFile('replace')"><span class="ico">⬆</span> Importer dans le dossier courant</button>
           <div class="menu-sep" />
           <button class="menu-item" @click="run(() => ui.openDialog('backups'))"><span class="ico">🕘</span> Sauvegardes automatiques…</button>
+          <button class="menu-item" @click="run(() => ui.openDialog('sync'))"><span class="ico">☁</span> Synchronisation chiffrée…</button>
           <div class="menu-sep" />
           <button class="menu-item" @click="run(() => emit('open-mail'))"><span class="ico">✉</span> Générer le courrier / mail</button>
           <button class="menu-item" @click="run(printPage)"><span class="ico">🖨</span> Imprimer / PDF<span class="grow" /><span class="xsmall muted">Ctrl+P</span></button>

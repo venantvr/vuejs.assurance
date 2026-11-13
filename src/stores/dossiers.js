@@ -10,7 +10,7 @@ import {
   sanitizeCategories, sanitizeDossier, todayISO, uid
 } from '@/lib/model.js'
 import {
-  DB_KEY, listBackups, loadDb, readRawDb, readStoredDb, rotateBackup, sanitizeActors, saveDb
+  DB_KEY, listBackups, loadDb, mergeDb, normalizeDb, readRawDb, readStoredDb, rotateBackup, sanitizeActors, saveDb
 } from '@/lib/storage.js'
 import { DOSSIER_TEMPLATES } from '@/lib/presets.js'
 
@@ -694,6 +694,27 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return { ok: true, count: incoming.length, mode }
   }
 
+  /* ------------------------------------------------------------ synchronisation */
+
+  /** Copie sérialisable de la base, destinée à être chiffrée puis envoyée. */
+  function exportDb () {
+    return JSON.parse(JSON.stringify({ version: 1, ...currentDb() }))
+  }
+
+  /**
+   * Fusionne une base distante (déjà déchiffrée) avec l'état local, selon les
+   * mêmes règles que deux onglets : l'union l'emporte, rien n'est perdu.
+   * Retourne false si la structure est inconnue.
+   */
+  function mergeRemoteDb (remote) {
+    const normalized = normalizeDb(remote)
+    if (!normalized) return false
+    commit({ backup: true, label: 'avant fusion de la synchronisation' })
+    loadIntoState(mergeDb(normalized, currentDb()))
+    schedulePersist()
+    return true
+  }
+
   /** Sauvegardes automatiques disponibles (les plus récentes d'abord). */
   function backups () {
     return listBackups().map((b) => {
@@ -774,6 +795,8 @@ export const useDossiersStore = defineStore('dossiers', () => {
     reorderParties,
     importPayload,
     backups,
-    restoreBackup
+    restoreBackup,
+    exportDb,
+    mergeRemoteDb
   }
 })
