@@ -142,6 +142,22 @@ export function uid (prefix = 'id') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
+/**
+ * N'accepte qu'une URL http(s) — tout le reste (javascript:, data:…) est rejeté.
+ * Une saisie sans schéma (« drive.google.com/… ») est complétée en https://.
+ */
+export function safeUrl (value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : (/^[^\s/]+\.[^\s/]{2,}(\/|$)/.test(raw) ? `https://${raw}` : raw)
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : ''
+  } catch {
+    return ''
+  }
+}
+
 export function isoOf (date) {
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
@@ -203,6 +219,7 @@ export function createStep (overrides = {}) {
     impact: '',
     pjCode: '',
     pjName: '',
+    pjUrl: '',
     question: '',
     questionResolved: false,
     questionAnswer: '',
@@ -303,6 +320,7 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       impact: step.impact || '',
       pjCode: step.pjCode || '',
       pjName: step.pjName || '',
+      pjUrl: safeUrl(step.pjUrl),
       question: step.question || '',
       questionResolved: !!step.questionResolved,
       questionAnswer: step.questionAnswer || '',

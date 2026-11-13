@@ -9,7 +9,7 @@ function csvCell (value) {
 }
 
 export function dossierToCsv (dossier) {
-  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Question', 'Question résolue', 'Réponse']
+  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Lien PJ', 'Question', 'Question résolue', 'Réponse']
   const rows = [header.map(csvCell).join(';')]
   for (const step of [...dossier.steps].sort(byDate)) {
     rows.push([
@@ -23,6 +23,7 @@ export function dossierToCsv (dossier) {
       step.impact,
       step.pjCode,
       step.pjName,
+      step.pjUrl,
       step.question,
       step.question ? (step.questionResolved ? 'oui' : 'non') : '',
       step.questionAnswer
@@ -90,7 +91,7 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
   const attachments = steps.filter((s) => s.pjCode)
   if (attachments.length) {
     lines.push('', '— BORDEREAU DES PIÈCES JOINTES —')
-    attachments.forEach((s) => lines.push(`${s.pjCode} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}`))
+    attachments.forEach((s) => lines.push(`${s.pjCode} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}${s.pjUrl ? ` — consultable : ${s.pjUrl}` : ''}`))
   }
 
   lines.push('')

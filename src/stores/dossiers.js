@@ -67,7 +67,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const dossier = active.value
     if (!dossier) return []
     return dossier.steps
-      .filter((s) => s.pjCode || s.pjName)
+      .filter((s) => s.pjCode || s.pjName || s.pjUrl)
       .sort((a, b) => (a.pjCode || 'zz').localeCompare(b.pjCode || 'zz', 'fr', { numeric: true }))
   })
 
@@ -521,7 +521,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const source = orderedIds
       ? orderedIds.map((id) => active.value.steps.find((s) => s.id === id)).filter(Boolean)
       : [...active.value.steps]
-        .filter((s) => s.pjCode || s.pjName)
+        .filter((s) => s.pjCode || s.pjName || s.pjUrl)
         .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
     source.forEach((step, index) => { step.pjCode = `PJ-${String(index + 1).padStart(2, '0')}` })
     touch()
@@ -539,6 +539,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
     commit()
     step.pjCode = ''
     step.pjName = ''
+    step.pjUrl = ''
     touch()
   }
 

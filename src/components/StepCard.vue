@@ -48,15 +48,23 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
 
     <p class="step-fact">{{ step.fact }}</p>
 
-    <div class="step-foot" :class="{ 'print-hide': !step.impact && !step.pjCode && !step.pjName }">
+    <div class="step-foot" :class="{ 'print-hide': !step.impact && !step.pjCode && !step.pjName && !step.pjUrl }">
       <span v-if="step.impact" class="badge">⇢ {{ step.impact }}</span>
       <button
-        v-if="step.pjCode || step.pjName"
+        v-if="step.pjCode || step.pjName || step.pjUrl"
         class="pj-tag"
         :title="`Copier le nom de fichier : ${filename}`"
         @click="emit('copy-pj', filename)"
       >📎 {{ step.pjCode || 'PJ' }} · {{ step.pjName || 'document' }} ⧉</button>
-      <span v-else class="badge badge-warn no-print">Aucune preuve rattachée</span>
+      <a
+        v-if="step.pjUrl"
+        class="badge badge-link no-print"
+        :href="step.pjUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Ouvrir la pièce (Google Drive)"
+      >🔗 ouvrir</a>
+      <span v-if="!step.pjCode && !step.pjName && !step.pjUrl" class="badge badge-warn no-print">Aucune preuve rattachée</span>
     </div>
 
     <div v-if="step.question" class="qbox" :class="{ done: step.questionResolved }">
@@ -82,6 +90,8 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
 </template>
 
 <style scoped>
+.badge-link { text-decoration: none; cursor: pointer; }
+.badge-link:hover { border-color: var(--blue); color: var(--blue); }
 .q-text { margin-top: 7px; }
 .answer { margin-top: 8px; }
 </style>
