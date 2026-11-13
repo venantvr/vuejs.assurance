@@ -6,7 +6,7 @@
  */
 import { nextTick, ref, watch } from 'vue'
 import { useUiStore } from '@/stores/ui.js'
-import { driveLink, searchDriveFiles } from '@/lib/gdrive.js'
+import { checkDriveTokenReadonly, driveLink, searchDriveFiles } from '@/lib/gdrive.js'
 import { formatDateFR } from '@/lib/format.js'
 
 const emit = defineEmits(['pick'])
@@ -18,6 +18,7 @@ const query = ref('')
 const queryField = ref(null)
 const results = ref(null) // null = pas encore cherché, [] = aucun résultat
 const loading = ref(false)
+const checkingToken = ref(false)
 const error = ref('')
 let searchSeq = 0
 
@@ -28,13 +29,22 @@ watch(editingToken, async (editing) => {
   }
 })
 
-function saveToken () {
-  ui.setDriveToken(tokenInput.value)
-  if (!ui.driveToken) {
+/** Le jeton n'est accepté (et stocké) que s'il est en lecture seule sur Drive. */
+async function saveToken () {
+  const value = String(tokenInput.value || '').trim()
+  if (!value) {
     error.value = 'Collez un jeton d\'accès pour interroger Google Drive'
     return
   }
+  checkingToken.value = true
   error.value = ''
+  const res = await checkDriveTokenReadonly(value)
+  checkingToken.value = false
+  if (!res.ok) {
+    error.value = res.error
+    return
+  }
+  ui.setDriveToken(value)
   editingToken.value = false
 }
 
@@ -89,13 +99,17 @@ function dateOf (file) {
           @keydown.enter.prevent="saveToken"
         >
         <span class="xsmall muted">
-          Jeton OAuth avec un droit de lecture Drive (ex. généré sur
-          <b>developers.google.com/oauthplayground</b>, scope <code>drive.readonly</code>).
-          Il reste dans ce navigateur et n'est jamais inclus dans les exports.
+          Jeton OAuth <b>en lecture seule</b> (ex. généré sur
+          <b>developers.google.com/oauthplayground</b>, scope <code>drive.readonly</code>) :
+          sa portée est vérifiée auprès de Google et tout jeton portant un droit
+          d'écriture est refusé. Il reste dans ce navigateur et n'est jamais inclus
+          dans les exports.
         </span>
       </label>
       <div class="row">
-        <button class="btn btn-sm btn-primary" type="button" @click="saveToken">Utiliser ce jeton</button>
+        <button class="btn btn-sm btn-primary" type="button" :disabled="checkingToken" @click="saveToken">
+          {{ checkingToken ? 'Vérification…' : 'Utiliser ce jeton' }}
+        </button>
         <button v-if="ui.driveToken" class="btn btn-sm" type="button" @click="editingToken = false">Annuler</button>
       </div>
     </template>

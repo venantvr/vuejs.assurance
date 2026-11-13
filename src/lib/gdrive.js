@@ -12,6 +12,50 @@
  */
 
 const API = 'https://www.googleapis.com/drive/v3/files'
+const TOKENINFO = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
+
+/**
+ * Vérifie auprès de Google qu'un jeton est bien en LECTURE SEULE sur Drive :
+ * tous ses scopes Drive doivent se terminer par `.readonly`, et il en faut au
+ * moins un. Un jeton porteur d'un droit d'écriture (drive, drive.file…) est
+ * refusé : l'application n'en a pas besoin et ne doit pas pouvoir modifier
+ * le Drive de l'utilisateur.
+ * Retourne { ok: true } ou { ok: false, error }.
+ */
+export async function checkDriveTokenReadonly (token) {
+  const value = String(token || '').trim()
+  if (!value) return { ok: false, error: 'Jeton vide' }
+
+  let response
+  try {
+    response = await fetch(TOKENINFO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ access_token: value })
+    })
+  } catch {
+    return { ok: false, error: 'Vérification du jeton impossible (connexion réseau ?)' }
+  }
+  if (!response.ok) return { ok: false, error: 'Jeton invalide ou expiré — collez un jeton d\'accès à jour' }
+
+  let scopes = []
+  try {
+    const data = await response.json()
+    scopes = String(data.scope || '').split(/\s+/).filter(Boolean)
+  } catch {
+    return { ok: false, error: 'Réponse de vérification illisible' }
+  }
+
+  const driveScopes = scopes.filter((s) => s.startsWith('https://www.googleapis.com/auth/drive'))
+  if (!driveScopes.length) {
+    return { ok: false, error: 'Ce jeton n\'a aucun droit Google Drive (scope drive.readonly attendu)' }
+  }
+  const writable = driveScopes.filter((s) => !s.endsWith('.readonly'))
+  if (writable.length) {
+    return { ok: false, error: 'Jeton refusé : il porte un droit d\'écriture Drive. Générez un jeton limité au scope drive.readonly.' }
+  }
+  return { ok: true }
+}
 
 /** Échappe une valeur insérée dans une requête Drive (`name contains '…'`). */
 function escapeQuery (value) {

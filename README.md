@@ -69,6 +69,8 @@ collé par l'utilisateur (ex. [OAuth Playground](https://developers.google.com/o
 scope `https://www.googleapis.com/auth/drive.readonly`). L'application reste 100 % locale :
 
 - aucun identifiant OAuth embarqué, aucun serveur intermédiaire ;
+- **lecture seule exigée** : la portée du jeton est vérifiée auprès de Google (`tokeninfo`) et
+  tout jeton portant un droit d'écriture Drive (`drive`, `drive.file`…) est refusé ;
 - seul le **lien** (`webViewLink`) est enregistré dans le dossier — jamais le fichier ni le jeton ;
 - le jeton vit dans les préférences locales du navigateur (`vuejs_assurance_prefs_v1`) et n'apparaît
   **jamais** dans les exports `.json`, le CSV ou le courrier ; « oublier le jeton » l'efface ;
