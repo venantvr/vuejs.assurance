@@ -54,11 +54,28 @@ l'en-tête de section, choix mémorisé). Une question se supprime par `🗑`, d
 depuis la carte de l'étape : seule la question part, l'étape reste.
 
 Une pièce jointe n'est pas une entité autonome : elle appartient à une étape de la chronologie
-(champs code + nom). Dans le bordereau, `✕` détache la pièce de son étape — l'étape, elle, reste —,
+(champs code + nom + lien). Dans le bordereau, `✕` détache la pièce de son étape — l'étape, elle, reste —,
 `✎` ouvre l'étape, et « Renuméroter par date » comble les trous de numérotation laissés.
 
 Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une recherche est actif
 (l'ordre affiché serait partiel). Chaque déplacement est annulable (`Ctrl+Z`).
+
+## Pièces en lien sur Google Drive
+
+Chaque pièce peut porter un **lien de consultation** (champ « Lien vers la pièce » dans le tiroir
+d'étape) : URL libre, ou fichier choisi sur Google Drive via « 🔍 Chercher sur Drive ». La recherche
+Drive appelle directement l'API `drive/v3` depuis le navigateur avec un **jeton d'accès en lecture**
+collé par l'utilisateur (ex. [OAuth Playground](https://developers.google.com/oauthplayground),
+scope `https://www.googleapis.com/auth/drive.readonly`). L'application reste 100 % locale :
+
+- aucun identifiant OAuth embarqué, aucun serveur intermédiaire ;
+- seul le **lien** (`webViewLink`) est enregistré dans le dossier — jamais le fichier ni le jeton ;
+- le jeton vit dans les préférences locales du navigateur (`vuejs_assurance_prefs_v1`) et n'apparaît
+  **jamais** dans les exports `.json`, le CSV ou le courrier ; « oublier le jeton » l'efface ;
+- un jeton OAuth expire (≈ 1 h) : l'application le signale et en demande un nouveau ;
+- les liens s'ouvrent depuis la carte d'étape (🔗), le bordereau (🔗) et sont repris dans le CSV
+  (colonne « Lien PJ »), le bordereau copié et le courrier généré (« consultable : … »).
+- seules les URL `http(s)` sont acceptées (toute autre forme est rejetée à la saisie et à l'import).
 
 ## Données : rien n'est jamais perdu
 
