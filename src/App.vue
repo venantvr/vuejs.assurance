@@ -21,6 +21,7 @@ import { useUiStore } from './stores/ui.js'
 import { useHotkeys } from './composables/useHotkeys.js'
 import { useFiles } from './composables/useFiles.js'
 import BackupsDialog from './components/dialogs/BackupsDialog.vue'
+import SyncDialog from './components/dialogs/SyncDialog.vue'
 import { watch } from 'vue'
 
 const store = useDossiersStore()
@@ -116,7 +117,6 @@ function confirmDeleteDossier () {
       <h1>Journal d'audit chronologique de sinistre</h1>
       <p class="small">Chronologie factuelle du dossier et parties en présence.</p>
       <p v-if="active.meta.project?.trim()" class="small"><b>Projet :</b> {{ active.meta.project }}</p>
-      <p v-if="active.meta.comment?.trim()" class="small">{{ active.meta.comment }}</p>
       <p class="small muted">Édité le {{ printDate }} · Dossier : {{ active.meta.ref?.trim() || active.name }}</p>
     </div>
 
@@ -138,6 +138,7 @@ function confirmDeleteDossier () {
     <MailDialog v-if="ui.dialog === 'mail'" />
     <HelpDialog v-if="ui.dialog === 'help'" />
     <BackupsDialog v-if="ui.dialog === 'backups'" />
+    <SyncDialog v-if="ui.dialog === 'sync'" />
     <ConfirmDialog v-if="ui.confirmBox" />
 
     <div v-if="isDraggingFile" class="dropzone">⬇ Déposez un fichier .json pour l'importer</div>
