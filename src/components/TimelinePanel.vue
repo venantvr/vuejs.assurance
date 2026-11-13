@@ -18,6 +18,9 @@ const { visibleSteps, countByCategory, gapBefore } = useTimeline()
 const searchInput = ref(null)
 const dragging = ref(false)
 
+/** Écarts calculés une fois par rendu (gapBefore est appelé pour chaque item). */
+const gapNotes = computed(() => visibleSteps.value.map((_, index) => gapBefore(index)))
+
 const dragDisabled = computed(() => ui.filtersActive || active.value?.ui.viewMode !== 'CARDS')
 
 /** Liste liée au glisser-déposer : l'écriture applique le nouvel ordre. */
@@ -151,11 +154,11 @@ defineExpose({ focusSearch })
         <template #item="{ element, index }">
           <div class="tl-item">
             <span class="tl-dot cat-dot" :style="{ '--cat': store.category(element.category).color }" />
-            <div v-if="!dragging && ui.showGaps && gapBefore(index)" class="gap-note" :class="{ hot: gapBefore(index).hot, 'gap-question': gapBefore(index).reason.includes('question') }">
-              <template v-if="gapBefore(index).hot">
-                ⟡ {{ gapBefore(index).days }} jours sans réponse {{ gapBefore(index).reason }} — délai opposable
+            <div v-if="!dragging && ui.showGaps && gapNotes[index]" class="gap-note" :class="{ hot: gapNotes[index].hot }">
+              <template v-if="gapNotes[index].hot">
+                ⟡ {{ gapNotes[index].days }} jours sans réponse {{ gapNotes[index].reason }} — délai opposable
               </template>
-              <template v-else>⟡ {{ gapBefore(index).days }} jours plus tard</template>
+              <template v-else>⟡ {{ gapNotes[index].days }} jours plus tard</template>
             </div>
             <StepCard
               :step="element"
