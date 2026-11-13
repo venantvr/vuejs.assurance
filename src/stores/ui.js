@@ -19,6 +19,13 @@ export const useUiStore = defineStore('ui', () => {
    * jamais inclus dans la base, les exports .json ou le courrier généré.
    */
   const driveToken = ref(typeof prefs.driveToken === 'string' ? prefs.driveToken : '')
+  /** Jeton d'accès à l'API de synchronisation (préférence locale, jamais exportée). */
+  const syncToken = ref(typeof prefs.syncToken === 'string' ? prefs.syncToken : '')
+  /** Dernière révision serveur connue (gestion des écritures concurrentes). */
+  const syncRev = ref(Number.isFinite(prefs.syncRev) ? prefs.syncRev : 0)
+  const syncAt = ref(typeof prefs.syncAt === 'string' ? prefs.syncAt : '')
+  /** Passphrase de chiffrement : EN MÉMOIRE SEULEMENT, jamais stockée nulle part. */
+  const syncPassphrase = ref('')
 
   // Filtres de la chronologie
   const search = ref('')
@@ -61,6 +68,17 @@ export const useUiStore = defineStore('ui', () => {
   function setDriveToken (value) {
     driveToken.value = String(value || '').trim()
     savePrefs({ ...loadPrefs(), driveToken: driveToken.value })
+  }
+
+  function setSyncToken (value) {
+    syncToken.value = String(value || '').trim()
+    savePrefs({ ...loadPrefs(), syncToken: syncToken.value })
+  }
+
+  function setSyncState ({ rev, at } = {}) {
+    if (Number.isFinite(rev)) syncRev.value = rev
+    if (at !== undefined) syncAt.value = at || ''
+    savePrefs({ ...loadPrefs(), syncRev: syncRev.value, syncAt: syncAt.value })
   }
 
   function toggleKpis () {
@@ -126,6 +144,12 @@ export const useUiStore = defineStore('ui', () => {
     showGaps,
     driveToken,
     setDriveToken,
+    syncToken,
+    setSyncToken,
+    syncRev,
+    syncAt,
+    setSyncState,
+    syncPassphrase,
     search,
     category,
     onlyOpenQuestions,
