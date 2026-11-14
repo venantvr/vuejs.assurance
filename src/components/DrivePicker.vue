@@ -9,7 +9,7 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import { useUiStore } from '@/stores/ui.js'
-import { checkDriveTokenReadonly, driveLink, requestDriveToken, searchDriveFiles } from '@/lib/gdrive.js'
+import { checkDriveTokenReadonly, driveLink, isFolder, requestDriveToken, resolveDrivePath, searchDriveFiles } from '@/lib/gdrive.js'
 import { formatDateFR } from '@/lib/format.js'
 
 const emit = defineEmits(['pick'])
@@ -17,6 +17,11 @@ const ui = useUiStore()
 
 const mode = ref(ui.driveTokenStale ? 'connect' : 'search') // connect | manual | search | settings
 const clientIdInput = ref(ui.driveClientId)
+const folderInput = ref(ui.driveFolder)
+/** Fil d'Ariane : [{ id, name }], vide = racine du Drive. */
+const crumbs = ref([])
+const folderNotice = ref('')
+let folderResolvedFor = null
 const tokenInput = ref('')
 const query = ref('')
 const queryField = ref(null)
@@ -33,17 +38,52 @@ const expiresLabel = computed(() => {
   return minutes ? `valable encore ${minutes} min` : 'expiré'
 })
 
+const currentFolderId = computed(() => (crumbs.value.length ? crumbs.value[crumbs.value.length - 1].id : 'root'))
+
 watch(mode, async (value) => {
   if (value === 'search') {
+    await openDefaultFolder()
     await nextTick()
     queryField.value?.focus()
   }
-})
+}, { immediate: true })
+
+/** Ouvre le dossier par défaut (⚙) et en liste le contenu ; repli sur la racine s'il manque. */
+async function openDefaultFolder () {
+  if (ui.driveTokenStale) return
+  const key = `${ui.driveToken}|${ui.driveFolder}`
+  if (folderResolvedFor === key) return
+  folderResolvedFor = key
+  folderNotice.value = ''
+  crumbs.value = []
+  if (ui.driveFolder) {
+    const res = await resolveDrivePath(ui.driveToken, ui.driveFolder)
+    if (!res.ok) { error.value = res.error; return }
+    crumbs.value = res.path
+    if (res.missing) folderNotice.value = `Dossier « ${res.missing} » introuvable : ouverture de ${crumbs.value.length ? crumbs.value.map((c) => c.name).join(' / ') : 'la racine'}.`
+  }
+  await search()
+}
+
+function enterFolder (folder) {
+  crumbs.value = [...crumbs.value, { id: folder.id, name: folder.name }]
+  query.value = ''
+  search()
+}
+
+function goTo (index) {
+  crumbs.value = crumbs.value.slice(0, index)
+  query.value = ''
+  search()
+}
 
 function saveClientId () {
   ui.setDriveClientId(clientIdInput.value)
+  ui.setDriveFolder(folderInput.value)
+  folderResolvedFor = null
   error.value = ''
-  mode.value = 'connect'
+  mode.value = connected.value ? 'search' : 'connect'
+  if (connected.value) openDefaultFolder()
 }
 
 /** Connexion Google : jeton lecture seule, vérifié avant d'être conservé. */
@@ -113,7 +153,7 @@ async function search () {
   const seq = ++searchSeq
   loading.value = true
   error.value = ''
-  const res = await searchDriveFiles(ui.driveToken, query.value)
+  const res = await searchDriveFiles(ui.driveToken, query.value, { folderId: currentFolderId.value })
   if (seq !== searchSeq) return // une recherche plus récente a pris la main
   loading.value = false
   if (!res.ok) {
@@ -129,6 +169,7 @@ async function search () {
 }
 
 function pick (file) {
+  if (isFolder(file)) { enterFolder(file); return }
   const url = driveLink(file)
   if (!url) return
   emit('pick', { name: file.name || '', url })
@@ -156,6 +197,11 @@ function dateOf (file) {
           avec l'origine de ce site dans « Origines JavaScript autorisées ». Aucun secret n'est demandé.
           Il reste dans ce navigateur : jamais dans le code, la base ni les exports.
         </span>
+      </label>
+      <label class="field">
+        <span>Dossier ouvert par défaut (chemin depuis la racine du Drive)</span>
+        <input v-model="folderInput" autocomplete="off" placeholder="Assurance ou Assurance/2026" @keydown.enter.prevent="saveClientId">
+        <span class="xsmall muted">Vide = racine. La recherche se fait dans le dossier affiché ; les sous-dossiers se parcourent au clic.</span>
       </label>
       <div class="row">
         <button class="btn btn-sm btn-primary" type="button" :disabled="!clientIdInput.trim()" @click="saveClientId">Enregistrer</button>
@@ -206,12 +252,22 @@ function dateOf (file) {
 
     <!-- Recherche -->
     <template v-else>
+      <div class="crumbs small">
+        <button class="crumb" type="button" :class="{ on: !crumbs.length }" @click="goTo(0)">Drive</button>
+        <template v-for="(c, i) in crumbs" :key="c.id">
+          <span class="muted">/</span>
+          <button class="crumb" type="button" :class="{ on: i === crumbs.length - 1 }" @click="goTo(i + 1)">{{ c.name }}</button>
+        </template>
+        <span class="grow" />
+        <button class="btn btn-sm btn-ghost" type="button" title="Client ID et dossier par défaut" @click="clientIdInput = ui.driveClientId; folderInput = ui.driveFolder; mode = 'settings'">⚙</button>
+      </div>
+      <p v-if="folderNotice" class="xsmall muted">{{ folderNotice }}</p>
       <div class="row search-row">
         <input
           ref="queryField"
           v-model="query"
           class="grow"
-          placeholder="Nom du fichier sur Drive (ex. facture fuite)"
+          :placeholder="`Rechercher dans ${crumbs.length ? crumbs[crumbs.length - 1].name : 'tout le Drive'}…`"
           @keydown.enter.prevent="search"
         >
         <button class="btn btn-sm btn-primary" type="button" :disabled="loading" @click="search">
@@ -230,13 +286,13 @@ function dateOf (file) {
 
     <ul v-if="results && results.length" class="results">
       <li v-for="file in results" :key="file.id">
-        <button class="result" type="button" :title="`Lier ${file.name}`" @click="pick(file)">
-          <span class="result-name">{{ file.name }}</span>
+        <button class="result" type="button" :title="isFolder(file) ? `Ouvrir ${file.name}` : `Lier ${file.name}`" @click="pick(file)">
+          <span class="result-name">{{ isFolder(file) ? '📁' : '📄' }} {{ file.name }}</span>
           <span class="xsmall muted nowrap">{{ dateOf(file) }}</span>
         </button>
       </li>
     </ul>
-    <p v-else-if="results && !loading" class="small muted">Aucun fichier trouvé pour cette recherche.</p>
+    <p v-else-if="results && !loading" class="small muted">{{ query.trim() ? 'Aucun fichier trouvé pour cette recherche.' : 'Dossier vide.' }}</p>
   </div>
 </template>
 
@@ -250,7 +306,11 @@ function dateOf (file) {
   color: var(--text-faint); text-decoration: underline; font-size: inherit;
 }
 .error-text { color: var(--red); }
-.results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow: auto; }
+.crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.crumb { background: none; border: 0; padding: 2px 4px; border-radius: 5px; cursor: pointer; color: var(--text-soft); font: inherit; }
+.crumb:hover { background: var(--bg-soft); }
+.crumb.on { color: var(--text); font-weight: 650; }
+.results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; }
 .result {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left; cursor: pointer;
