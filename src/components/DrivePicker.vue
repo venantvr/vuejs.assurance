@@ -333,7 +333,7 @@ function dateOf (file) {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left; cursor: pointer;
   border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px;
-  background: var(--surface);
+  background: var(--surface); color: var(--text); font: inherit;
 }
 .result:hover { border-color: var(--blue); }
 .result-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
