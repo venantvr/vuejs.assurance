@@ -9,6 +9,12 @@ compatibility_date = "2026-11-10"
 workers_dev = false
 preview_urls = false
 
+# Domaine de production (zone DNS chez Cloudflare ; custom_domain crée l'enregistrement).
+# Doit rester AVANT toute table [..] : sinon TOML le rattache à la table précédente.
+routes = [
+  { pattern = "vuejs-assurance.hack-your-domain.fr", custom_domain = true }
+]
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
@@ -26,11 +32,6 @@ run_worker_first = ["/api/*"]
 #      npx wrangler secret put VUEJS_ASSURANCE_TOKEN
 # 3. Recommandé : placer le domaine derrière Cloudflare Access (Zero Trust).
 #
-# [[kv_namespaces]]
-# binding = "SYNC_KV"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-# Domaine de production (zone DNS chez Cloudflare ; custom_domain crée l'enregistrement).
-routes = [
-  { pattern = "vuejs-assurance.hack-your-domain.fr", custom_domain = true }
-]
+[[kv_namespaces]]
+binding = "SYNC_KV"
+id = "753670bc01dd4e48ab640c1c00689909"
