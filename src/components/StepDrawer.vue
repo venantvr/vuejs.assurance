@@ -3,8 +3,9 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
-import { CHANNELS, createStep, safeUrl } from '@/lib/model.js'
+import { CHANNELS, createAttachment, createStep, safeUrl } from '@/lib/model.js'
 import { copyToClipboard, pjFilename } from '@/lib/format.js'
+import { driveDownloadLink } from '@/lib/gdrive.js'
 import ActorPicker from './ActorPicker.vue'
 import DrivePicker from './DrivePicker.vue'
 
@@ -15,14 +16,15 @@ const { categories } = storeToRefs(store)
 
 const form = ref(null)
 const factField = ref(null)
-const showDrive = ref(false)
+/** Index de la pièce pour laquelle le sélecteur Drive est ouvert (-1 : fermé). */
+const driveFor = ref(-1)
 
 const isNew = computed(() => !form.value?.id || !store.active?.steps.some((s) => s.id === form.value.id))
-const filename = computed(() => (form.value ? pjFilename(form.value) : ''))
 
 watch(drawerStep, async (payload) => {
-  form.value = payload ? { ...createStep(), ...JSON.parse(JSON.stringify(payload)) } : null
-  showDrive.value = false
+  form.value = payload ? createStep(JSON.parse(JSON.stringify(payload))) : null
+  if (form.value && payload?.id) form.value.id = payload.id
+  driveFor.value = -1
   if (!form.value) return
   await nextTick()
   factField.value?.focus()
@@ -41,12 +43,18 @@ function save () {
     ui.toast('La date est obligatoire', { type: 'error' })
     return
   }
-  const link = safeUrl(form.value.pjUrl)
-  if (form.value.pjUrl?.trim() && !link) {
-    ui.toast('Le lien de la pièce doit être une URL http(s) valide', { type: 'error' })
-    return
+  for (const att of form.value.attachments) {
+    if (att.url?.trim() && !safeUrl(att.url)) {
+      ui.toast(`Le lien de la pièce « ${att.name || att.code || '?'} » doit être une URL http(s) valide`, { type: 'error' })
+      return
+    }
+    att.url = safeUrl(att.url)
+    // URL Drive collée à la main : le lien de téléchargement se déduit de l'identifiant
+    if (att.url && !att.downloadUrl) att.downloadUrl = driveDownloadLink(att.url)
+    if (!att.url) att.downloadUrl = ''
   }
-  form.value.pjUrl = link
+  // une ligne entièrement vide n'est pas une pièce
+  form.value.attachments = form.value.attachments.filter((a) => a.code.trim() || a.name.trim() || a.url)
   if (isNew.value) {
     const { id, order, ...data } = form.value
     store.addStep(data)
@@ -58,20 +66,36 @@ function save () {
   close()
 }
 
-function suggestPj () {
-  form.value.pjCode = store.nextPjCode()
+function addAttachment () {
+  form.value.attachments.push(createAttachment())
+  driveFor.value = -1
+}
+
+function removeAttachment (index) {
+  form.value.attachments.splice(index, 1)
+  if (driveFor.value === index) driveFor.value = -1
+  else if (driveFor.value > index) driveFor.value -= 1
+}
+
+/** Numéro suivant, en comptant les codes déjà saisis dans ce tiroir. */
+function suggestPj (index) {
+  const taken = form.value.attachments.map((a) => a.code).filter(Boolean)
+  form.value.attachments[index].code = store.nextPjCode(taken)
 }
 
 /** Sélection d'un fichier Drive : le lien est posé, le nom comble le champ vide. */
-function linkDriveFile ({ name, url }) {
-  form.value.pjUrl = url
-  if (!form.value.pjName.trim() && name) form.value.pjName = name
-  showDrive.value = false
+function linkDriveFile ({ name, url, downloadUrl }) {
+  const att = form.value.attachments[driveFor.value]
+  if (!att) return
+  att.url = url
+  att.downloadUrl = downloadUrl || ''
+  if (!att.name.trim() && name) att.name = name
+  driveFor.value = -1
   ui.toast('Pièce liée au fichier Google Drive')
 }
 
-async function copyFilename () {
-  const ok = await copyToClipboard(filename.value)
+async function copyFilename (att) {
+  const ok = await copyToClipboard(pjFilename(att, form.value.date))
   ui.toast(ok ? 'Nom de fichier copié' : 'Copie impossible', { type: ok ? 'info' : 'error' })
 }
 
@@ -158,48 +182,52 @@ function confirmRemove () {
 
         <div class="card card-pad sub-card">
           <div class="row head-row">
-            <b class="small">📎 Pièce justificative</b>
+            <b class="small">📎 Pièces justificatives</b>
+            <span v-if="form.attachments.length" class="badge">{{ form.attachments.length }}</span>
             <span class="grow" />
-            <button class="btn btn-sm" @click="suggestPj">Numéro suivant</button>
-            <button
-              v-if="form.pjCode || form.pjName || form.pjUrl"
-              class="btn btn-sm btn-danger"
-              title="Retirer la pièce de cette étape"
-              @click="form.pjCode = ''; form.pjName = ''; form.pjUrl = ''"
-            >✕ Détacher</button>
+            <button class="btn btn-sm btn-primary" type="button" @click="addAttachment">＋ Pièce</button>
           </div>
-          <div class="grid-2">
-            <label class="field">
-              <span>Code</span>
-              <input v-model="form.pjCode" placeholder="PJ-01">
-            </label>
-            <label class="field">
-              <span>Nom de la pièce</span>
-              <input v-model="form.pjName" placeholder="Facture recherche de fuite">
-            </label>
-          </div>
-          <div v-if="form.pjCode || form.pjName" class="row small mono filename">
-            {{ filename }}
-            <button class="btn btn-sm btn-ghost" @click="copyFilename">⧉ copier</button>
-          </div>
-          <div class="field link-field">
-            <span>Lien vers la pièce (Google Drive ou autre URL)</span>
+
+          <p v-if="!form.attachments.length" class="xsmall muted">
+            Aucune pièce : ajoutez-en une par document (facture, photo, courrier…). Chaque pièce a son code, son nom et son lien.
+          </p>
+
+          <div v-for="(att, index) in form.attachments" :key="att.id" class="att-row">
+            <div class="row att-head">
+              <span class="xsmall muted att-index">#{{ index + 1 }}</span>
+              <input v-model="att.code" class="att-code" placeholder="PJ-01">
+              <button class="btn btn-sm btn-ghost" type="button" title="Numéro suivant" @click="suggestPj(index)">№</button>
+              <input v-model="att.name" class="grow" placeholder="Nom de la pièce — ex : Facture recherche de fuite">
+              <button class="btn btn-sm btn-ghost btn-danger" type="button" title="Retirer cette pièce" @click="removeAttachment(index)">✕</button>
+            </div>
             <div class="row link-row">
-              <input v-model="form.pjUrl" class="grow" placeholder="https://drive.google.com/…">
+              <input v-model="att.url" class="grow" placeholder="Lien — https://drive.google.com/…">
               <a
-                v-if="safeUrl(form.pjUrl)"
+                v-if="safeUrl(att.url)"
                 class="btn btn-sm btn-ghost"
-                :href="safeUrl(form.pjUrl)"
+                :href="safeUrl(att.url)"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Ouvrir le lien dans un nouvel onglet"
               >↗</a>
-              <button class="btn btn-sm" type="button" @click="showDrive = !showDrive">
-                {{ showDrive ? 'Fermer Drive' : '🔍 Chercher sur Drive' }}
+              <a
+                v-if="att.downloadUrl || driveDownloadLink(att.url)"
+                class="btn btn-sm btn-ghost"
+                :href="att.downloadUrl || driveDownloadLink(att.url)"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Télécharger la pièce"
+              >⬇</a>
+              <button class="btn btn-sm" type="button" @click="driveFor = driveFor === index ? -1 : index">
+                {{ driveFor === index ? 'Fermer Drive' : '🔍 Drive' }}
               </button>
             </div>
+            <div v-if="att.code || att.name" class="row xsmall mono filename">
+              {{ pjFilename(att, form.date) }}
+              <button class="btn btn-sm btn-ghost" type="button" @click="copyFilename(att)">⧉</button>
+            </div>
+            <DrivePicker v-if="driveFor === index" @pick="linkDriveFile" />
           </div>
-          <DrivePicker v-if="showDrive" @pick="linkDriveFile" />
         </div>
 
         <div class="card card-pad question-card">
@@ -236,6 +264,14 @@ function confirmRemove () {
 .question-card { background: var(--violet-soft); border-color: color-mix(in srgb, var(--violet) 25%, transparent); }
 .question-field { margin-top: 9px; }
 .faded { opacity: .75; }
+.att-row { border-top: 1px dashed var(--border); padding-top: 9px; margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
+.att-row:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.att-head { flex-wrap: nowrap; gap: 6px; }
+.att-index { width: 22px; flex: none; }
+.att-code { width: 86px; flex: none; }
+.att-head .grow { min-width: 0; }
+.link-row { gap: 6px; }
+.link-row .grow { min-width: 0; }
 .cat-field { display: flex; align-items: center; gap: 2px; }
 .cat-field select { flex: 1; min-width: 0; }
 </style>

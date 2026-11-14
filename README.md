@@ -60,10 +60,16 @@ Une pièce jointe n'est pas une entité autonome : elle appartient à une étape
 Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une recherche est actif
 (l'ordre affiché serait partiel). Chaque déplacement est annulable (`Ctrl+Z`).
 
-## Pièces en lien sur Google Drive
+## Pièces justificatives
 
-Chaque pièce peut porter un **lien de consultation** (champ « Lien vers la pièce » dans le tiroir
-d'étape) : URL libre, ou fichier choisi sur Google Drive via « 🔍 Chercher sur Drive ».
+Une étape porte **autant de pièces que nécessaire** (« ＋ Pièce » dans le tiroir) : chacune a son
+code (PJ-01…, « № » donne le suivant), son nom, son lien de consultation et, pour un fichier Drive,
+son lien de **téléchargement direct** (⬇ sur la carte et dans le tiroir ; récupéré à la sélection,
+ou déduit de l'identifiant si vous collez une URL Drive à la main — les documents Google natifs n'en
+ont pas). Les anciens dossiers à pièce unique sont repris automatiquement.
+
+Chaque pièce peut porter un **lien de consultation** : URL libre, ou fichier choisi sur Google Drive
+via « 🔍 Drive » sur la ligne de la pièce.
 
 **Connexion en un clic** : bouton « Connecter Google Drive (lecture seule) ». La fenêtre Google
 s'ouvre, l'application reçoit un jeton d'accès limité au scope `drive.readonly` — portée vérifiée
@@ -91,8 +97,8 @@ dossier manque, repli sur la racine avec un avis.
 Le **collage manuel** d'un jeton (ex. [OAuth Playground](https://developers.google.com/oauthplayground))
 reste possible, avec la même exigence de lecture seule. Un jeton expire au bout d'une heure : le
 sélecteur l'indique et propose « renouveler ». Seul le **lien** (`webViewLink`) est enregistré dans le
-dossier — jamais le fichier ni le jeton. Les liens s'ouvrent depuis la carte d'étape (🔗) et sont
-repris dans le CSV et le courrier.
+dossier — jamais le fichier ni le jeton. Les liens s'ouvrent depuis la carte d'étape (🔗 consulter, ⬇ télécharger) et sont repris dans le
+CSV (colonnes « Lien PJ » et « Téléchargement PJ ») et le courrier.
 
 ## Synchronisation chiffrée (Cloudflare, facultative)
 

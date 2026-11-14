@@ -206,7 +206,41 @@ export function actorsLabel (step) {
   return splitActors(step?.actors ?? step?.actor).join(' & ')
 }
 
+/** Une pièce justificative rattachée à une étape : code (PJ-01), nom, lien. */
+export function createAttachment (overrides = {}) {
+  return {
+    id: uid('pj'),
+    code: String(overrides.code ?? overrides.pjCode ?? '').trim(),
+    name: String(overrides.name ?? overrides.pjName ?? '').trim(),
+    url: safeUrl(overrides.url ?? overrides.pjUrl ?? ''),
+    downloadUrl: safeUrl(overrides.downloadUrl ?? '')
+  }
+}
+
+/**
+ * Normalise la liste des pièces d'une étape. Accepte aussi l'ancien modèle à
+ * champs uniques (pjCode / pjName / pjUrl), converti en une pièce.
+ */
+export function sanitizeAttachments (list, legacy = {}) {
+  const out = []
+  for (const raw of Array.isArray(list) ? list : []) {
+    if (!raw || typeof raw !== 'object') continue
+    const att = createAttachment(raw)
+    if (raw.id) att.id = String(raw.id)
+    if (att.code || att.name || att.url) out.push(att)
+  }
+  const old = createAttachment(legacy)
+  if ((old.code || old.name || old.url) &&
+      !out.some((a) => a.code === old.code && a.name === old.name && a.url === old.url)) {
+    out.push(old)
+  }
+  return out
+}
+
+export const hasAttachments = (step) => (step?.attachments || []).length > 0
+
 export function createStep (overrides = {}) {
+  const { pjCode, pjName, pjUrl, attachments, actor, ...rest } = overrides
   return {
     id: uid('step'),
     date: todayISO(),
@@ -217,15 +251,14 @@ export function createStep (overrides = {}) {
     channel: '',
     amount: 0,
     impact: '',
-    pjCode: '',
-    pjName: '',
-    pjUrl: '',
+    attachments: [],
     question: '',
     questionResolved: false,
     questionAnswer: '',
     order: 0,
-    ...overrides,
-    actors: splitActors(overrides.actors ?? overrides.actor ?? [])
+    ...rest,
+    actors: splitActors(overrides.actors ?? actor ?? []),
+    attachments: sanitizeAttachments(attachments, { pjCode, pjName, pjUrl })
   }
 }
 
@@ -252,12 +285,12 @@ export function createDossier (name = 'Nouveau dossier', template = null) {
       }))
     })
     let n = 0
-    steps.forEach((step) => {
-      if (step.pjName) {
+    steps.forEach((step) => step.attachments.forEach((att) => {
+      if (!att.code) {
         n += 1
-        step.pjCode = `PJ-${String(n).padStart(2, '0')}`
+        att.code = `PJ-${String(n).padStart(2, '0')}`
       }
-    })
+    }))
   }
 
   return {
@@ -318,9 +351,10 @@ export function sanitizeDossier (raw, fallbackName = 'Dossier importé') {
       channel: CHANNEL_MAP[step.channel] ? step.channel : '',
       amount: Number.parseFloat(step.amount) || 0,
       impact: step.impact || '',
-      pjCode: step.pjCode || '',
-      pjName: step.pjName || '',
-      pjUrl: safeUrl(step.pjUrl),
+      attachments: step.attachments,
+      pjCode: step.pjCode,
+      pjName: step.pjName,
+      pjUrl: step.pjUrl,
       question: step.question || '',
       questionResolved: !!step.questionResolved,
       questionAnswer: step.questionAnswer || '',

@@ -38,7 +38,7 @@ const total = computed(() => props.steps.reduce((sum, s) => sum + (Number.parseF
           <td class="nowrap">{{ channelOf(step.channel) ? `${channelOf(step.channel).icon} ${channelOf(step.channel).short}` : '—' }}</td>
           <td class="num">{{ Number.parseFloat(step.amount) ? formatCurrency(step.amount) : '—' }}</td>
           <td>{{ step.impact }}</td>
-          <td class="nowrap">{{ step.pjCode || '—' }}</td>
+          <td class="nowrap">{{ (step.attachments || []).map((a) => a.code || 'PJ').join(', ') || '—' }}</td>
           <td class="no-print nowrap">
             <button class="btn btn-sm btn-ghost" title="Modifier" @click="$emit('edit', step)">✎</button>
             <button class="btn btn-sm btn-ghost btn-danger" title="Supprimer" @click="$emit('remove', step)">🗑</button>

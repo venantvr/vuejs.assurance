@@ -9,7 +9,7 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import { useUiStore } from '@/stores/ui.js'
-import { checkDriveTokenReadonly, driveLink, isFolder, requestDriveToken, resolveDrivePath, searchDriveFiles, searchDriveRecursive } from '@/lib/gdrive.js'
+import { checkDriveTokenReadonly, driveDownloadLink, driveLink, isFolder, requestDriveToken, resolveDrivePath, searchDriveFiles, searchDriveRecursive } from '@/lib/gdrive.js'
 import { formatDateFR } from '@/lib/format.js'
 
 const emit = defineEmits(['pick'])
@@ -182,7 +182,7 @@ function pick (file) {
   if (isFolder(file)) { enterFolder(file); return }
   const url = driveLink(file)
   if (!url) return
-  emit('pick', { name: file.name || '', url })
+  emit('pick', { name: file.name || '', url, downloadUrl: driveDownloadLink(file) })
 }
 
 function dateOf (file) {

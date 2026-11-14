@@ -9,7 +9,7 @@ function csvCell (value) {
 }
 
 export function dossierToCsv (dossier) {
-  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Lien PJ', 'Question', 'Question résolue', 'Réponse']
+  const header = ['Date', 'Heure', 'Catégorie', 'Fait', 'Acteur', 'Canal', 'Montant EUR', 'Impact', 'Code PJ', 'Nom PJ', 'Lien PJ', 'Téléchargement PJ', 'Question', 'Question résolue', 'Réponse']
   const rows = [header.map(csvCell).join(';')]
   for (const step of [...dossier.steps].sort(byDate)) {
     rows.push([
@@ -21,9 +21,10 @@ export function dossierToCsv (dossier) {
       channelOf(step.channel)?.short || '',
       (Number.parseFloat(step.amount) || 0).toFixed(2).replace('.', ','),
       step.impact,
-      step.pjCode,
-      step.pjName,
-      step.pjUrl,
+      (step.attachments || []).map((a) => a.code).join(' ; '),
+      (step.attachments || []).map((a) => a.name).join(' ; '),
+      (step.attachments || []).map((a) => a.url).filter(Boolean).join(' ; '),
+      (step.attachments || []).map((a) => a.downloadUrl).filter(Boolean).join(' ; '),
       step.question,
       step.question ? (step.questionResolved ? 'oui' : 'non') : '',
       step.questionAnswer
@@ -79,7 +80,8 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     const channel = channelOf(step.channel)
     if (channel) details.push(`par ${channel.label.toLowerCase()}`)
     if (Number.parseFloat(step.amount) > 0) details.push(`montant : ${formatCurrency(step.amount)}`)
-    if (step.pjCode) details.push(step.pjCode)
+    const codes = (step.attachments || []).map((a) => a.code).filter(Boolean)
+    if (codes.length) details.push(codes.join(', '))
     const suffix = details.length ? ` (${details.join(' ; ')})` : ''
     lines.push(`• ${formatDateFR(step.date)}${step.time ? ` à ${step.time}` : ''} — ${step.fact.replace(/\s+/g, ' ').trim()}${suffix}`)
   }
@@ -93,10 +95,10 @@ export function buildMail (dossier, { kind = 'SYNTHESE' } = {}) {
     openQuestions.forEach((q, i) => lines.push(`${i + 1}. ${q}`))
   }
 
-  const attachments = steps.filter((s) => s.pjCode)
+  const attachments = steps.flatMap((s) => (s.attachments || []).filter((a) => a.code).map((a) => ({ step: s, a })))
   if (attachments.length) {
     lines.push('', '— BORDEREAU DES PIÈCES JOINTES —')
-    attachments.forEach((s) => lines.push(`${s.pjCode} — ${s.pjName || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(s)}${s.pjUrl ? ` — consultable : ${s.pjUrl}` : ''}`))
+    attachments.forEach(({ step: s, a }) => lines.push(`${a.code} — ${a.name || 'document'} (${formatDateFR(s.date)}) — ${pjFilename(a, s.date)}${a.url ? ` — consultable : ${a.url}` : ''}`))
   }
 
   lines.push('')

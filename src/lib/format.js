@@ -30,10 +30,10 @@ export function slugify (str) {
     .slice(0, 60) || 'document'
 }
 
-/** Nom de fichier normalisé d'une pièce jointe : PJ-01_2026-09-12_Nom.pdf */
-export function pjFilename (step) {
-  const code = (step.pjCode || 'PJ').trim().replace(/\s+/g, '-')
-  return `${code}_${step.date || 'date'}_${slugify(step.pjName || 'document')}.pdf`
+/** Nom de fichier normalisé d'une pièce : PJ-01_2026-09-12_Nom.pdf */
+export function pjFilename (attachment, date) {
+  const code = (attachment?.code || 'PJ').trim().replace(/\s+/g, '-')
+  return `${code}_${date || 'date'}_${slugify(attachment?.name || 'document')}.pdf`
 }
 
 export function downloadFile (filename, content, mime = 'text/plain') {

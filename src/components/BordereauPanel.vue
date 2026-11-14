@@ -14,7 +14,7 @@ const { active, attachments } = storeToRefs(store)
 const list = computed({
   get: () => attachments.value,
   set: (next) => {
-    store.renumberAttachments(next.map((step) => step.id))
+    store.renumberAttachments(next.map((x) => x.attachment.id))
     ui.toast('Pièces renumérotées dans le nouvel ordre')
   }
 })
@@ -77,7 +77,7 @@ async function copyAll () {
         ghost-class="sortable-ghost"
         drag-class="sortable-drag"
       >
-        <template #item="{ element }">
+        <template #item="{ element: { step: element, attachment: att } }">
           <div class="pj-card">
             <div class="pj-head">
               <button class="drag-handle no-print" title="Glisser pour renuméroter">⠿</button>

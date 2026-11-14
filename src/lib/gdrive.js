@@ -144,6 +144,31 @@ export function driveLink (file) {
   return file?.webViewLink || (file?.id ? `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view` : '')
 }
 
+/** Identifiant Drive contenu dans une URL de consultation (file/d/ID, open?id=ID, uc?id=ID). */
+export function driveIdFromUrl (url) {
+  const value = String(url || '')
+  const match = value.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/) ||
+    value.match(/[?&]id=([A-Za-z0-9_-]{10,})/) ||
+    value.match(/\/(?:document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/)
+  return match ? match[1] : ''
+}
+
+/**
+ * Lien de téléchargement direct. Pour un fichier binaire Drive fournit
+ * `webContentLink` ; sinon on dérive l'URL `uc?export=download` de l'identifiant
+ * (les documents Google natifs n'ont pas de téléchargement direct : vide).
+ */
+export function driveDownloadLink (fileOrUrl) {
+  if (fileOrUrl && typeof fileOrUrl === 'object') {
+    if (fileOrUrl.webContentLink) return fileOrUrl.webContentLink
+    if (String(fileOrUrl.mimeType || '').startsWith('application/vnd.google-apps.')) return ''
+    return fileOrUrl.id ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileOrUrl.id)}` : ''
+  }
+  const id = driveIdFromUrl(fileOrUrl)
+  if (!id || /\/(?:document|spreadsheets|presentation)\/d\//.test(String(fileOrUrl))) return ''
+  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(id)}`
+}
+
 export const FOLDER_MIME = 'application/vnd.google-apps.folder'
 export const isFolder = (file) => file?.mimeType === FOLDER_MIME
 
@@ -250,7 +275,7 @@ export async function searchDriveFiles (token, query, { pageSize = 40, folderId 
     q,
     pageSize: String(pageSize),
     orderBy: 'folder,name,modifiedTime desc',
-    fields: 'files(id,name,mimeType,webViewLink,modifiedTime,parents)',
+    fields: 'files(id,name,mimeType,webViewLink,webContentLink,modifiedTime,parents)',
     supportsAllDrives: 'true',
     includeItemsFromAllDrives: 'true'
   })

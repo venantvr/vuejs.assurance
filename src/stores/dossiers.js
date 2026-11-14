@@ -62,13 +62,13 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return steps.sort((a, b) => (mode === 'DATE_DESC' ? key(b).localeCompare(key(a)) : key(a).localeCompare(key(b))))
   })
 
-  /** Pièces jointes, dans l'ordre de leur numérotation. */
+  /** Toutes les pièces du dossier ({ step, attachment }), dans l'ordre de numérotation. */
   const attachments = computed(() => {
     const dossier = active.value
     if (!dossier) return []
     return dossier.steps
-      .filter((s) => s.pjCode || s.pjName || s.pjUrl)
-      .sort((a, b) => (a.pjCode || 'zz').localeCompare(b.pjCode || 'zz', 'fr', { numeric: true }))
+      .flatMap((step) => (step.attachments || []).map((attachment) => ({ step, attachment })))
+      .sort((a, b) => (a.attachment.code || 'zz').localeCompare(b.attachment.code || 'zz', 'fr', { numeric: true }))
   })
 
   const knownActors = computed(() => sanitizeActors(actors.value))
@@ -420,9 +420,14 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   /* ----------------------------------------------------------------- étapes */
 
-  function nextPjCode () {
-    const max = (active.value?.steps || []).reduce((acc, step) => {
-      const match = /(\d+)/.exec(step.pjCode || '')
+  /** Prochain code libre, en tenant compte des codes déjà pris dans `extra` (pièces en cours d'édition). */
+  function nextPjCode (extra = []) {
+    const codes = [
+      ...(active.value?.steps || []).flatMap((step) => (step.attachments || []).map((a) => a.code)),
+      ...extra
+    ]
+    const max = codes.reduce((acc, code) => {
+      const match = /(\d+)/.exec(code || '')
       return match ? Math.max(acc, Number.parseInt(match[1], 10)) : acc
     }, 0)
     return `PJ-${String(max + 1).padStart(2, '0')}`
@@ -436,7 +441,11 @@ export const useDossiersStore = defineStore('dossiers', () => {
     if (!active.value) return null
     commit()
     const step = createStep({ ...data, order: nextOrder() })
-    if (step.pjName && !step.pjCode) step.pjCode = nextPjCode()
+    // une pièce nommée sans code reçoit le numéro suivant
+    const taken = []
+    step.attachments.forEach((att) => {
+      if (!att.code && (att.name || att.url)) { att.code = nextPjCode(taken); taken.push(att.code) }
+    })
     active.value.steps.push(step)
     step.actors.forEach(rememberActor)
     touch()
@@ -447,7 +456,9 @@ export const useDossiersStore = defineStore('dossiers', () => {
     if (!active.value) return
     commit()
     const index = active.value.steps.findIndex((s) => s.id === data.id)
-    const payload = { ...data, amount: Number.parseFloat(data.amount) || 0 }
+    const payload = createStep({ ...data })
+    payload.id = data.id || payload.id
+    payload.order = Number.isFinite(data.order) ? data.order : nextOrder()
     if (index >= 0) active.value.steps.splice(index, 1, payload)
     else active.value.steps.push({ ...payload, order: nextOrder() })
     ;(payload.actors || []).forEach(rememberActor)
@@ -459,7 +470,9 @@ export const useDossiersStore = defineStore('dossiers', () => {
     const source = active.value.steps.find((s) => s.id === id)
     if (!source) return null
     commit()
-    const copy = { ...JSON.parse(JSON.stringify(source)), id: uid('step'), pjCode: '', order: nextOrder() }
+    const copy = { ...JSON.parse(JSON.stringify(source)), id: uid('step'), order: nextOrder() }
+    // les pièces suivent, sans numéro : la copie n'est pas la même preuve
+    copy.attachments = copy.attachments.map((a) => ({ ...a, id: uid('pj'), code: '' }))
     active.value.steps.push(copy)
     touch()
     return copy
@@ -514,32 +527,34 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   /* ------------------------------------------------------------ pièces jointes */
 
-  /** Renumérote PJ-01, PJ-02… dans l'ordre donné (ou l'ordre chronologique). */
+  /**
+   * Renumérote PJ-01, PJ-02… dans l'ordre donné (identifiants de pièces) ou,
+   * par défaut, dans l'ordre chronologique des étapes puis des pièces.
+   */
   function renumberAttachments (orderedIds = null) {
     if (!active.value) return 0
     commit()
+    const all = attachments.value.map((x) => x.attachment)
     const source = orderedIds
-      ? orderedIds.map((id) => active.value.steps.find((s) => s.id === id)).filter(Boolean)
+      ? orderedIds.map((id) => all.find((a) => a.id === id)).filter(Boolean)
       : [...active.value.steps]
-        .filter((s) => s.pjCode || s.pjName || s.pjUrl)
         .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
-    source.forEach((step, index) => { step.pjCode = `PJ-${String(index + 1).padStart(2, '0')}` })
+        .flatMap((s) => s.attachments || [])
+    source.forEach((att, index) => { att.code = `PJ-${String(index + 1).padStart(2, '0')}` })
     touch()
     return source.length
   }
 
   /**
-   * Détache la pièce d'une étape : le code et le nom sont vidés, l'étape reste
-   * dans la chronologie. Les autres numéros ne bougent pas (vos fichiers déjà
-   * renommés restent valables) ; « Renuméroter par date » comble les trous.
+   * Retire une pièce d'une étape ; l'étape reste dans la chronologie. Les autres
+   * numéros ne bougent pas (vos fichiers déjà renommés restent valables) ;
+   * « Renuméroter par date » comble les trous.
    */
-  function detachAttachment (stepId) {
+  function detachAttachment (stepId, attachmentId) {
     const step = active.value?.steps.find((s) => s.id === stepId)
     if (!step) return
     commit()
-    step.pjCode = ''
-    step.pjName = ''
-    step.pjUrl = ''
+    step.attachments = (step.attachments || []).filter((a) => a.id !== attachmentId)
     touch()
   }
 

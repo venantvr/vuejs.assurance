@@ -14,7 +14,7 @@ const emit = defineEmits(['edit', 'duplicate', 'insert-after', 'remove', 'copy-p
 const store = useDossiersStore()
 const category = computed(() => store.category(props.step.category))
 const amount = computed(() => Number.parseFloat(props.step.amount) || 0)
-const filename = computed(() => pjFilename(props.step))
+const attachments = computed(() => props.step.attachments || [])
 const channel = computed(() => channelOf(props.step.channel))
 const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !props.step.questionResolved)
 </script>
@@ -48,23 +48,32 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
 
     <p class="step-fact">{{ step.fact }}</p>
 
-    <div class="step-foot" :class="{ 'print-hide': !step.impact && !step.pjCode && !step.pjName && !step.pjUrl }">
+    <div class="step-foot" :class="{ 'print-hide': !step.impact && !attachments.length }">
       <span v-if="step.impact" class="badge">⇢ {{ step.impact }}</span>
-      <button
-        v-if="step.pjCode || step.pjName || step.pjUrl"
-        class="pj-tag"
-        :title="`Copier le nom de fichier : ${filename}`"
-        @click="emit('copy-pj', filename)"
-      >📎 {{ step.pjCode || 'PJ' }} · {{ step.pjName || 'document' }} ⧉</button>
-      <a
-        v-if="step.pjUrl"
-        class="badge badge-link no-print"
-        :href="step.pjUrl"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Ouvrir la pièce (Google Drive)"
-      >🔗 ouvrir</a>
-      <span v-if="!step.pjCode && !step.pjName && !step.pjUrl" class="badge badge-warn no-print">Aucune preuve rattachée</span>
+      <template v-for="att in attachments" :key="att.id">
+        <button
+          class="pj-tag"
+          :title="`Copier le nom de fichier : ${pjFilename(att, step.date)}`"
+          @click="emit('copy-pj', pjFilename(att, step.date))"
+        >📎 {{ att.code || 'PJ' }} · {{ att.name || 'document' }} ⧉</button>
+        <a
+          v-if="att.url"
+          class="badge badge-link no-print"
+          :href="att.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="`Ouvrir ${att.name || 'la pièce'}`"
+        >🔗</a>
+        <a
+          v-if="att.downloadUrl"
+          class="badge badge-link no-print"
+          :href="att.downloadUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="`Télécharger ${att.name || 'la pièce'}`"
+        >⬇</a>
+      </template>
+      <span v-if="!attachments.length" class="badge badge-warn no-print">Aucune preuve rattachée</span>
     </div>
 
     <div v-if="step.question" class="qbox" :class="{ done: step.questionResolved }">

@@ -15,10 +15,10 @@ export function useTimeline () {
     return orderedSteps.value.filter((step) => {
       if (ui.category !== 'ALL' && step.category !== ui.category) return false
       if (ui.onlyOpenQuestions && !(step.question?.trim() && !step.questionResolved)) return false
-      if (ui.onlyWithoutPj && (step.pjCode || step.pjName)) return false
+      if (ui.onlyWithoutPj && (step.attachments || []).length) return false
       if (ui.channel !== 'ALL' && (step.channel || '') !== ui.channel) return false
       if (!needle) return true
-      const haystack = [step.fact, (step.actors || []).join(' '), step.impact, step.pjCode, step.pjName, step.question, step.questionAnswer, step.date]
+      const haystack = [step.fact, (step.actors || []).join(' '), step.impact, ...(step.attachments || []).flatMap((a) => [a.code, a.name]), step.question, step.questionAnswer, step.date]
         .join(' ').toLowerCase()
       return haystack.includes(needle)
     })
@@ -56,7 +56,7 @@ export function useTimeline () {
     for (const step of dossier.steps) {
       const amount = Number.parseFloat(step.amount) || 0
       if (amount) { total += amount; counted += 1 }
-      if (step.pjCode || step.pjName) pj += 1
+      pj += (step.attachments || []).length
       if (step.question?.trim() && !step.questionResolved) open += 1
     }
     for (const q of dossier.globalQuestions) {
@@ -70,7 +70,7 @@ export function useTimeline () {
       counted,
       events: dossier.steps.length,
       pj,
-      missingPj: dossier.steps.length - pj,
+      missingPj: dossier.steps.filter((s) => !(s.attachments || []).length).length,
       open,
       spanDays,
       silenceDays: rawSilence === null ? null : Math.max(0, rawSilence)
