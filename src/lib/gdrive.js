@@ -12,6 +12,83 @@
  */
 
 const API = 'https://www.googleapis.com/drive/v3/files'
+const GIS_SRC = 'https://accounts.google.com/gsi/client'
+export const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly'
+
+let gisLoading = null
+
+/**
+ * Charge Google Identity Services à la demande (jamais au chargement de la
+ * page : tant que l'utilisateur n'active pas Drive, rien ne part vers Google).
+ */
+export function loadGis () {
+  if (globalThis.google?.accounts?.oauth2) return Promise.resolve(globalThis.google.accounts.oauth2)
+  if (gisLoading) return gisLoading
+  gisLoading = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = GIS_SRC
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      const api = globalThis.google?.accounts?.oauth2
+      if (api) resolve(api)
+      else reject(new Error('Google Identity Services indisponible'))
+    }
+    script.onerror = () => {
+      gisLoading = null
+      reject(new Error('Impossible de charger Google Identity Services (bloqueur ? hors ligne ?)'))
+    }
+    document.head.appendChild(script)
+  })
+  return gisLoading
+}
+
+/**
+ * Demande un jeton d'accès Drive en lecture seule par la fenêtre de connexion
+ * Google (flux implicite « token » de Google Identity Services). Seul le
+ * client_id — public par conception — est nécessaire ; aucun secret.
+ * Retourne { ok, token, expiresIn } ou { ok: false, error }.
+ */
+export async function requestDriveToken (clientId, { consent = false } = {}) {
+  const id = String(clientId || '').trim()
+  if (!id) return { ok: false, error: 'Renseignez le client ID OAuth (type « Application Web »)' }
+  let oauth2
+  try {
+    oauth2 = await loadGis()
+  } catch (error) {
+    return { ok: false, error: error.message }
+  }
+  return new Promise((resolve) => {
+    const reasons = {
+      popup_closed: 'Fenêtre Google fermée avant la fin de la connexion',
+      popup_failed_to_open: 'Fenêtre Google bloquée : autorisez les pop-ups pour ce site',
+      access_denied: 'Accès refusé dans la fenêtre Google',
+      invalid_client: 'Client ID inconnu de Google : vérifiez l\'identifiant et le type « Application Web »'
+    }
+    let client
+    try {
+      client = oauth2.initTokenClient({
+        client_id: id,
+        scope: DRIVE_READONLY_SCOPE,
+        callback: (response) => {
+          if (response?.error) {
+            resolve({ ok: false, error: reasons[response.error] || `Google a répondu : ${response.error_description || response.error}` })
+            return
+          }
+          resolve({ ok: true, token: response.access_token, expiresIn: Number(response.expires_in) || 3600 })
+        },
+        error_callback: (err) => {
+          resolve({ ok: false, error: reasons[err?.type] || err?.message || 'Connexion Google interrompue' })
+        }
+      })
+    } catch (error) {
+      resolve({ ok: false, error: `Initialisation Google impossible : ${error.message}` })
+      return
+    }
+    // '' : pas de nouvel écran de consentement si l'accès a déjà été accordé
+    client.requestAccessToken({ prompt: consent ? 'consent' : '' })
+  })
+}
 const TOKENINFO = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 
 /**

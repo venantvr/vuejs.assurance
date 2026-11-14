@@ -63,21 +63,30 @@ Le glisser-déposer de la chronologie est désactivé tant qu'un filtre ou une r
 ## Pièces en lien sur Google Drive
 
 Chaque pièce peut porter un **lien de consultation** (champ « Lien vers la pièce » dans le tiroir
-d'étape) : URL libre, ou fichier choisi sur Google Drive via « 🔍 Chercher sur Drive ». La recherche
-Drive appelle directement l'API `drive/v3` depuis le navigateur avec un **jeton d'accès en lecture**
-collé par l'utilisateur (ex. [OAuth Playground](https://developers.google.com/oauthplayground),
-scope `https://www.googleapis.com/auth/drive.readonly`). L'application reste 100 % locale :
+d'étape) : URL libre, ou fichier choisi sur Google Drive via « 🔍 Chercher sur Drive ».
 
-- aucun identifiant OAuth embarqué, aucun serveur intermédiaire ;
-- **lecture seule exigée** : la portée du jeton est vérifiée auprès de Google (`tokeninfo`) et
-  tout jeton portant un droit d'écriture Drive (`drive`, `drive.file`…) est refusé ;
-- seul le **lien** (`webViewLink`) est enregistré dans le dossier — jamais le fichier ni le jeton ;
-- le jeton vit dans les préférences locales du navigateur (`vuejs_assurance_prefs_v1`) et n'apparaît
-  **jamais** dans les exports `.json`, le CSV ou le courrier ; « oublier le jeton » l'efface ;
-- un jeton OAuth expire (≈ 1 h) : l'application le signale et en demande un nouveau ;
-- les liens s'ouvrent depuis la carte d'étape (🔗), le bordereau (🔗) et sont repris dans le CSV
-  (colonne « Lien PJ »), le bordereau copié et le courrier généré (« consultable : … »).
-- seules les URL `http(s)` sont acceptées (toute autre forme est rejetée à la saisie et à l'import).
+**Connexion en un clic** : bouton « Connecter Google Drive (lecture seule) ». La fenêtre Google
+s'ouvre, l'application reçoit un jeton d'accès limité au scope `drive.readonly` — portée vérifiée
+auprès de Google (`tokeninfo`), tout droit d'écriture refusé. Il faut, une seule fois, un
+**client ID OAuth** (⚙ dans le sélecteur) :
+
+1. console Google Cloud → *Identifiants* → *Créer un ID client OAuth* → type **Application Web** ;
+2. *Origines JavaScript autorisées* : l'URL où tourne l'app (`http://localhost:5173` en dev, votre
+   domaine Cloudflare en prod) — aucun URI de redirection n'est nécessaire ;
+3. coller le client ID dans ⚙. **Le client secret ne sert pas** et ne doit jamais être saisi : une
+   application statique n'a aucun endroit où le cacher.
+
+Le client ID est un identifiant public par conception ; il vit dans les préférences locales du
+navigateur (`vuejs_assurance_prefs_v1`), comme le jeton, et n'apparaît **jamais** dans le code, la
+base, les exports `.json`, le CSV ou le courrier. « Oublier le client ID » l'efface. Google Identity
+Services n'est chargé qu'au clic sur « Connecter » : tant que Drive n'est pas utilisé, rien ne part
+vers Google.
+
+Le **collage manuel** d'un jeton (ex. [OAuth Playground](https://developers.google.com/oauthplayground))
+reste possible, avec la même exigence de lecture seule. Un jeton expire au bout d'une heure : le
+sélecteur l'indique et propose « renouveler ». Seul le **lien** (`webViewLink`) est enregistré dans le
+dossier — jamais le fichier ni le jeton. Les liens s'ouvrent depuis la carte d'étape (🔗) et sont
+repris dans le CSV et le courrier.
 
 ## Synchronisation chiffrée (Cloudflare, facultative)
 

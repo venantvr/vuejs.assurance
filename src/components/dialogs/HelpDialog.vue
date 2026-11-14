@@ -57,6 +57,17 @@ const shortcuts = [
     </section>
 
     <section>
+      <b class="small">Pièces sur Google Drive</b>
+      <p class="small muted">
+        « Connecter Google Drive (lecture seule) » ouvre la fenêtre Google et ne rapporte qu'un jeton
+        <code>drive.readonly</code>, vérifié. Une seule fois, renseignez via ⚙ un <b>client ID OAuth</b> de type
+        « Application Web » (identifiant public, conservé dans ce navigateur — jamais le <i>client secret</i>,
+        qui n'a pas sa place dans une application statique). Rien ne part vers Google tant que vous ne cliquez
+        pas sur « Connecter ».
+      </p>
+    </section>
+
+    <section>
       <b class="small">Parties &amp; coordonnées</b>
       <p class="small muted">
         L'encart « Parties » (avant la chronologie) rassemble, pour chaque intervenant, rôle, nom, adresse,
