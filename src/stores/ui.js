@@ -19,6 +19,14 @@ export const useUiStore = defineStore('ui', () => {
    * jamais inclus dans la base, les exports .json ou le courrier généré.
    */
   const driveToken = ref(typeof prefs.driveToken === 'string' ? prefs.driveToken : '')
+  /** Date d'expiration du jeton Drive (ms epoch), 0 si inconnue. */
+  const driveTokenExpiresAt = ref(Number(prefs.driveTokenExpiresAt) || 0)
+  /**
+   * Client ID OAuth (type « Application Web ») pour la connexion Google en un
+   * clic. Identifiant public par conception, stocké ici, dans ce navigateur :
+   * jamais dans le code, la base, les exports.
+   */
+  const driveClientId = ref(typeof prefs.driveClientId === 'string' ? prefs.driveClientId : '')
   /** Jeton d'accès à l'API de synchronisation (préférence locale, jamais exportée). */
   const syncToken = ref(typeof prefs.syncToken === 'string' ? prefs.syncToken : '')
   /** Dernière révision serveur connue (gestion des écritures concurrentes). */
@@ -65,10 +73,21 @@ export const useUiStore = defineStore('ui', () => {
     savePrefs({ ...loadPrefs(), showGaps: showGaps.value })
   }
 
-  function setDriveToken (value) {
+  function setDriveToken (value, expiresIn = 0) {
     driveToken.value = String(value || '').trim()
-    savePrefs({ ...loadPrefs(), driveToken: driveToken.value })
+    driveTokenExpiresAt.value = driveToken.value && expiresIn ? Date.now() + expiresIn * 1000 : 0
+    savePrefs({ ...loadPrefs(), driveToken: driveToken.value, driveTokenExpiresAt: driveTokenExpiresAt.value })
   }
+
+  function setDriveClientId (value) {
+    driveClientId.value = String(value || '').trim()
+    savePrefs({ ...loadPrefs(), driveClientId: driveClientId.value })
+  }
+
+  /** Vrai si le jeton Drive est absent ou connu comme expiré (marge d'une minute). */
+  const driveTokenStale = computed(() =>
+    !driveToken.value || (driveTokenExpiresAt.value > 0 && Date.now() > driveTokenExpiresAt.value - 60_000)
+  )
 
   function setSyncToken (value) {
     syncToken.value = String(value || '').trim()
@@ -143,7 +162,11 @@ export const useUiStore = defineStore('ui', () => {
     showKpis,
     showGaps,
     driveToken,
+    driveTokenExpiresAt,
+    driveTokenStale,
+    driveClientId,
     setDriveToken,
+    setDriveClientId,
     syncToken,
     setSyncToken,
     syncRev,
