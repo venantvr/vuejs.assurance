@@ -9,7 +9,7 @@
  */
 import { computed, nextTick, ref, watch } from 'vue'
 import { useUiStore } from '@/stores/ui.js'
-import { checkDriveTokenReadonly, driveLink, isFolder, requestDriveToken, resolveDrivePath, searchDriveFiles } from '@/lib/gdrive.js'
+import { checkDriveTokenReadonly, driveLink, isFolder, requestDriveToken, resolveDrivePath, searchDriveFiles, searchDriveRecursive } from '@/lib/gdrive.js'
 import { formatDateFR } from '@/lib/format.js'
 
 const emit = defineEmits(['pick'])
@@ -22,6 +22,9 @@ const folderInput = ref(ui.driveFolder)
 const crumbs = ref([])
 const folderNotice = ref('')
 let folderResolvedFor = null
+/** Arborescences déjà parcourues, par dossier racine (le temps de la session). */
+const treeCache = new Map()
+const recursive = ref(true)
 const tokenInput = ref('')
 const query = ref('')
 const queryField = ref(null)
@@ -132,6 +135,7 @@ async function saveToken () {
 }
 
 function disconnect () {
+  treeCache.clear()
   ui.setDriveToken('')
   results.value = null
   mode.value = 'connect'
@@ -153,7 +157,13 @@ async function search () {
   const seq = ++searchSeq
   loading.value = true
   error.value = ''
-  const res = await searchDriveFiles(ui.driveToken, query.value, { folderId: currentFolderId.value })
+  const term = query.value.trim()
+  const root = currentFolderId.value
+  // sans mot-clé on parcourt le dossier ; avec, on cherche dans tous ses sous-dossiers
+  const res = term && recursive.value
+    ? await searchDriveRecursive(ui.driveToken, term, root, { tree: treeCache.get(root) || null })
+    : await searchDriveFiles(ui.driveToken, term, { folderId: root })
+  if (res.ok && res.tree) treeCache.set(root, res.tree)
   if (seq !== searchSeq) return // une recherche plus récente a pris la main
   loading.value = false
   if (!res.ok) {
@@ -274,6 +284,9 @@ function dateOf (file) {
           {{ loading ? '…' : 'Chercher' }}
         </button>
       </div>
+      <label class="xsmall muted rec-row">
+        <input v-model="recursive" type="checkbox"> inclure les sous-dossiers
+      </label>
       <div class="xsmall muted token-row">
         Drive connecté<template v-if="expiresLabel"> · {{ expiresLabel }}</template> ·
         <button class="link-btn" type="button" @click="connect(false)">renouveler</button> ·
@@ -287,7 +300,10 @@ function dateOf (file) {
     <ul v-if="results && results.length" class="results">
       <li v-for="file in results" :key="file.id">
         <button class="result" type="button" :title="isFolder(file) ? `Ouvrir ${file.name}` : `Lier ${file.name}`" @click="pick(file)">
-          <span class="result-name">{{ isFolder(file) ? '📁' : '📄' }} {{ file.name }}</span>
+          <span class="result-name">
+            {{ isFolder(file) ? '📁' : '📄' }} {{ file.name }}
+            <span v-if="file.folderPath" class="xsmall muted"> · {{ file.folderPath }}/</span>
+          </span>
           <span class="xsmall muted nowrap">{{ dateOf(file) }}</span>
         </button>
       </li>
@@ -307,6 +323,8 @@ function dateOf (file) {
 }
 .error-text { color: var(--red); }
 .crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rec-row { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.rec-row input { width: auto; margin: 0; }
 .crumb { background: none; border: 0; padding: 2px 4px; border-radius: 5px; cursor: pointer; color: var(--text-soft); font: inherit; }
 .crumb:hover { background: var(--bg-soft); }
 .crumb.on { color: var(--text); font-weight: 650; }
