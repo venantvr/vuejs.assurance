@@ -167,16 +167,81 @@ export async function resolveDrivePath (token, path) {
   return { ok: true, path: resolved }
 }
 
+const PARENTS_PER_QUERY = 40
+const MAX_FOLDERS = 400
+
+/**
+ * Parcourt l'arborescence sous un dossier (en largeur) et retourne
+ * Map<id, { name, parentId }> incluant le dossier racine lui-même.
+ * Borné à MAX_FOLDERS pour rester raisonnable sur un gros Drive.
+ */
+export async function collectFolderTree (token, rootId, rootName = '') {
+  const tree = new Map([[rootId, { name: rootName, parentId: null }]])
+  let frontier = [rootId]
+  while (frontier.length && tree.size < MAX_FOLDERS) {
+    const batch = frontier.splice(0, PARENTS_PER_QUERY)
+    const res = await searchDriveFiles(token, '', { parentIds: batch, onlyFolders: true, pageSize: 1000 })
+    if (!res.ok) return { ok: false, error: res.error, status: res.status, tree }
+    for (const folder of res.files) {
+      if (tree.has(folder.id)) continue
+      tree.set(folder.id, { name: folder.name, parentId: (folder.parents || []).find((p) => tree.has(p)) || batch[0] })
+      frontier.push(folder.id)
+    }
+  }
+  return { ok: true, tree, truncated: tree.size >= MAX_FOLDERS }
+}
+
+/** Chemin relatif d'un fichier sous la racine de l'arbre (« 2026/Factures »). */
+export function relativePath (tree, parentId) {
+  const parts = []
+  let cursor = parentId
+  while (cursor && tree.has(cursor) && tree.get(cursor).parentId !== null) {
+    parts.unshift(tree.get(cursor).name)
+    cursor = tree.get(cursor).parentId
+  }
+  return parts.join('/')
+}
+
+/**
+ * Recherche récursive sous un dossier : l'arbre des sous-dossiers est
+ * parcouru puis interrogé par paquets. Retourne { ok, files, truncated }.
+ * Chaque fichier porte `folderPath` (chemin relatif à la racine cherchée).
+ */
+export async function searchDriveRecursive (token, query, rootId, { tree = null } = {}) {
+  let folderTree = tree
+  if (!folderTree) {
+    const res = await collectFolderTree(token, rootId)
+    if (!res.ok) return res
+    folderTree = res.tree
+  }
+  const ids = [...folderTree.keys()]
+  const files = []
+  const seen = new Set()
+  for (let i = 0; i < ids.length; i += PARENTS_PER_QUERY) {
+    const res = await searchDriveFiles(token, query, { parentIds: ids.slice(i, i + PARENTS_PER_QUERY), pageSize: 100 })
+    if (!res.ok) return res
+    for (const f of res.files) {
+      if (seen.has(f.id)) continue
+      seen.add(f.id)
+      const parent = (f.parents || []).find((p) => folderTree.has(p))
+      files.push({ ...f, folderPath: relativePath(folderTree, parent) })
+    }
+  }
+  files.sort((a, b) => (isFolder(b) - isFolder(a)) || a.name.localeCompare(b.name, 'fr'))
+  return { ok: true, files, tree: folderTree }
+}
+
 /**
  * Liste ou recherche des fichiers. Retourne { ok, files } ou { ok: false, error }.
  * `files` : [{ id, name, mimeType, webViewLink, modifiedTime }], dossiers d'abord.
  * Options : folderId (restreint au dossier), exactName, onlyFolders, pageSize.
  */
-export async function searchDriveFiles (token, query, { pageSize = 40, folderId = null, exactName = null, onlyFolders = false } = {}) {
+export async function searchDriveFiles (token, query, { pageSize = 40, folderId = null, parentIds = null, exactName = null, onlyFolders = false } = {}) {
   const trimmed = String(query || '').trim()
+  const parents = parentIds?.length ? parentIds : (folderId ? [folderId] : [])
   const q = [
     'trashed = false',
-    folderId ? `'${escapeQuery(folderId)}' in parents` : null,
+    parents.length ? `(${parents.map((id) => `'${escapeQuery(id)}' in parents`).join(' or ')})` : null,
     exactName ? `name = '${escapeQuery(exactName)}'` : (trimmed ? `name contains '${escapeQuery(trimmed)}'` : null),
     onlyFolders ? `mimeType = '${FOLDER_MIME}'` : null
   ].filter(Boolean).join(' and ')
@@ -185,7 +250,7 @@ export async function searchDriveFiles (token, query, { pageSize = 40, folderId 
     q,
     pageSize: String(pageSize),
     orderBy: 'folder,name,modifiedTime desc',
-    fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
+    fields: 'files(id,name,mimeType,webViewLink,modifiedTime,parents)',
     supportsAllDrives: 'true',
     includeItemsFromAllDrives: 'true'
   })
