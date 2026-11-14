@@ -16,7 +16,7 @@ const { categories } = storeToRefs(store)
 
 const form = ref(null)
 const factField = ref(null)
-/** Index de la pièce pour laquelle le sélecteur Drive est ouvert (-1 : fermé). */
+/** Sélecteur Drive : -1 fermé, 'new' pour créer des pièces, sinon index de la pièce à relier. */
 const driveFor = ref(-1)
 
 const isNew = computed(() => !form.value?.id || !store.active?.steps.some((s) => s.id === form.value.id))
@@ -83,8 +83,22 @@ function suggestPj (index) {
   form.value.attachments[index].code = store.nextPjCode(taken)
 }
 
-/** Sélection d'un fichier Drive : le lien est posé, le nom comble le champ vide. */
+/**
+ * Sélection d'un fichier Drive. Depuis l'en-tête (« Chercher sur Drive »), chaque
+ * fichier devient une nouvelle pièce numérotée et le sélecteur reste ouvert pour
+ * en enchaîner plusieurs ; depuis une ligne, il relie cette pièce.
+ */
 function linkDriveFile ({ name, url, downloadUrl }) {
+  if (driveFor.value === 'new') {
+    if (form.value.attachments.some((a) => a.url === url)) {
+      ui.toast('Ce fichier est déjà rattaché à l\'étape')
+      return
+    }
+    const taken = form.value.attachments.map((a) => a.code).filter(Boolean)
+    form.value.attachments.push(createAttachment({ code: store.nextPjCode(taken), name, url, downloadUrl }))
+    ui.toast(`Pièce ${form.value.attachments.length} ajoutée — choisissez-en une autre ou fermez Drive`)
+    return
+  }
   const att = form.value.attachments[driveFor.value]
   if (!att) return
   att.url = url
@@ -185,11 +199,17 @@ function confirmRemove () {
             <b class="small">📎 Pièces justificatives</b>
             <span v-if="form.attachments.length" class="badge">{{ form.attachments.length }}</span>
             <span class="grow" />
-            <button class="btn btn-sm btn-primary" type="button" @click="addAttachment">＋ Pièce</button>
+            <button class="btn btn-sm" type="button" :class="{ 'btn-primary': driveFor === 'new' }" @click="driveFor = driveFor === 'new' ? -1 : 'new'">
+              {{ driveFor === 'new' ? 'Fermer Drive' : '🔍 Chercher sur Drive' }}
+            </button>
+            <button class="btn btn-sm" type="button" title="Ajouter une pièce à saisir à la main" @click="addAttachment">＋ Pièce</button>
           </div>
 
-          <p v-if="!form.attachments.length" class="xsmall muted">
-            Aucune pièce : ajoutez-en une par document (facture, photo, courrier…). Chaque pièce a son code, son nom et son lien.
+          <DrivePicker v-if="driveFor === 'new'" @pick="linkDriveFile" />
+
+          <p v-if="!form.attachments.length && driveFor !== 'new'" class="xsmall muted">
+            Aucune pièce : cherchez vos documents sur Drive (chaque fichier choisi devient une pièce numérotée)
+            ou ajoutez-en une à la main.
           </p>
 
           <div v-for="(att, index) in form.attachments" :key="att.id" class="att-row">
