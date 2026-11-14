@@ -144,21 +144,47 @@ export function driveLink (file) {
   return file?.webViewLink || (file?.id ? `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view` : '')
 }
 
+export const FOLDER_MIME = 'application/vnd.google-apps.folder'
+export const isFolder = (file) => file?.mimeType === FOLDER_MIME
+
 /**
- * Recherche des fichiers par nom. Retourne { ok, files } ou { ok: false, error }.
- * `files` : [{ id, name, mimeType, webViewLink, modifiedTime }]
+ * Résout un chemin de dossiers depuis la racine du Drive (« Assurance/2026 »).
+ * Retourne { ok, path: [{ id, name }] } — le chemin s'arrête au dernier
+ * segment trouvé, `missing` nomme le premier segment introuvable, s'il y en a.
  */
-export async function searchDriveFiles (token, query, { pageSize = 15 } = {}) {
+export async function resolveDrivePath (token, path) {
+  const segments = String(path || '').split('/').map((s) => s.trim()).filter(Boolean)
+  const resolved = []
+  let parent = 'root'
+  for (const name of segments) {
+    const res = await searchDriveFiles(token, '', { folderId: parent, exactName: name, onlyFolders: true, pageSize: 2 })
+    if (!res.ok) return { ok: false, error: res.error, status: res.status, path: resolved }
+    const folder = res.files[0]
+    if (!folder) return { ok: true, path: resolved, missing: name }
+    resolved.push({ id: folder.id, name: folder.name })
+    parent = folder.id
+  }
+  return { ok: true, path: resolved }
+}
+
+/**
+ * Liste ou recherche des fichiers. Retourne { ok, files } ou { ok: false, error }.
+ * `files` : [{ id, name, mimeType, webViewLink, modifiedTime }], dossiers d'abord.
+ * Options : folderId (restreint au dossier), exactName, onlyFolders, pageSize.
+ */
+export async function searchDriveFiles (token, query, { pageSize = 40, folderId = null, exactName = null, onlyFolders = false } = {}) {
   const trimmed = String(query || '').trim()
   const q = [
     'trashed = false',
-    trimmed ? `name contains '${escapeQuery(trimmed)}'` : null
+    folderId ? `'${escapeQuery(folderId)}' in parents` : null,
+    exactName ? `name = '${escapeQuery(exactName)}'` : (trimmed ? `name contains '${escapeQuery(trimmed)}'` : null),
+    onlyFolders ? `mimeType = '${FOLDER_MIME}'` : null
   ].filter(Boolean).join(' and ')
 
   const params = new URLSearchParams({
     q,
     pageSize: String(pageSize),
-    orderBy: 'modifiedTime desc',
+    orderBy: 'folder,name,modifiedTime desc',
     fields: 'files(id,name,mimeType,webViewLink,modifiedTime)',
     supportsAllDrives: 'true',
     includeItemsFromAllDrives: 'true'

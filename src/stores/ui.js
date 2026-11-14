@@ -27,6 +27,8 @@ export const useUiStore = defineStore('ui', () => {
    * jamais dans le code, la base, les exports.
    */
   const driveClientId = ref(typeof prefs.driveClientId === 'string' ? prefs.driveClientId : '')
+  /** Dossier Drive ouvert par défaut dans le sélecteur (chemin depuis la racine). */
+  const driveFolder = ref(typeof prefs.driveFolder === 'string' ? prefs.driveFolder : 'Assurance')
   /** Jeton d'accès à l'API de synchronisation (préférence locale, jamais exportée). */
   const syncToken = ref(typeof prefs.syncToken === 'string' ? prefs.syncToken : '')
   /** Dernière révision serveur connue (gestion des écritures concurrentes). */
@@ -77,6 +79,11 @@ export const useUiStore = defineStore('ui', () => {
     driveToken.value = String(value || '').trim()
     driveTokenExpiresAt.value = driveToken.value && expiresIn ? Date.now() + expiresIn * 1000 : 0
     savePrefs({ ...loadPrefs(), driveToken: driveToken.value, driveTokenExpiresAt: driveTokenExpiresAt.value })
+  }
+
+  function setDriveFolder (value) {
+    driveFolder.value = String(value || '').trim().replace(/^\/+|\/+$/g, '')
+    savePrefs({ ...loadPrefs(), driveFolder: driveFolder.value })
   }
 
   function setDriveClientId (value) {
@@ -165,8 +172,10 @@ export const useUiStore = defineStore('ui', () => {
     driveTokenExpiresAt,
     driveTokenStale,
     driveClientId,
+    driveFolder,
     setDriveToken,
     setDriveClientId,
+    setDriveFolder,
     syncToken,
     setSyncToken,
     syncRev,

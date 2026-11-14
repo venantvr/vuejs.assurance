@@ -82,6 +82,10 @@ base, les exports `.json`, le CSV ou le courrier. « Oublier le client ID » l'e
 Services n'est chargé qu'au clic sur « Connecter » : tant que Drive n'est pas utilisé, rien ne part
 vers Google.
 
+Le sélecteur s'ouvre dans le dossier **`Assurance`** à la racine du Drive (chemin réglable dans ⚙,
+`Assurance/2026` accepté ; vide = racine). Fil d'Ariane, sous-dossiers au clic, recherche limitée au
+dossier affiché ; si le dossier manque, repli sur la racine avec un avis.
+
 Le **collage manuel** d'un jeton (ex. [OAuth Playground](https://developers.google.com/oauthplayground))
 reste possible, avec la même exigence de lecture seule. Un jeton expire au bout d'une heure : le
 sélecteur l'indique et propose « renouveler ». Seul le **lien** (`webViewLink`) est enregistré dans le
