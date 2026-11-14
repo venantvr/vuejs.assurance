@@ -23,14 +23,14 @@ run_worker_first = ["/api/*"]
 # 1. Créer l'espace KV puis coller son id ci-dessous :
 #      npx wrangler kv namespace create SYNC_KV
 # 2. Définir le jeton d'accès (longue chaîne aléatoire, ex. `openssl rand -base64 33`) :
-#      npx wrangler secret put SYNC_TOKEN
+#      npx wrangler secret put VUEJS_ASSURANCE_TOKEN
 # 3. Recommandé : placer le domaine derrière Cloudflare Access (Zero Trust).
 #
 # [[kv_namespaces]]
 # binding = "SYNC_KV"
 # id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# Décommentez et adaptez pour publier sur votre domaine :
-# routes = [
-#   { pattern = "assurance.exemple.fr", custom_domain = true }
-# ]
+# Domaine de production (zone DNS chez Cloudflare ; custom_domain crée l'enregistrement).
+routes = [
+  { pattern = "vuejs-assurance.hack-your-domain.fr", custom_domain = true }
+]

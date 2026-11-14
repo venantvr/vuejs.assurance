@@ -6,7 +6,7 @@
  * ne quitte jamais le navigateur). Il ne peut pas lire les dossiers, et ne
  * journalise rien de leur contenu.
  *
- * Tant que le KV (SYNC_KV) et le secret (SYNC_TOKEN) ne sont pas configurés
+ * Tant que le KV (SYNC_KV) et le secret (VUEJS_ASSURANCE_TOKEN) ne sont pas configurés
  * dans wrangler.toml, l'API répond « non configuré » : l'application reste
  * purement locale.
  *
@@ -55,13 +55,13 @@ function isEnvelope (value) {
 }
 
 async function handleSync (request, env) {
-  if (!env.SYNC_KV || !env.SYNC_TOKEN) {
+  if (!env.SYNC_KV || !env.VUEJS_ASSURANCE_TOKEN) {
     return json(503, { error: 'Synchronisation non configurée sur ce déploiement (KV ou secret manquant)' })
   }
 
   const auth = request.headers.get('Authorization') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
-  if (!token || !tokenMatches(token, env.SYNC_TOKEN)) {
+  if (!token || !tokenMatches(token, env.VUEJS_ASSURANCE_TOKEN)) {
     return json(401, { error: 'Jeton de synchronisation invalide' })
   }
 

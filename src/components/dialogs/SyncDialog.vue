@@ -110,8 +110,8 @@ async function pull () {
 
       <label class="field">
         <span>Jeton d'accès au serveur</span>
-        <input v-model="tokenInput" type="password" autocomplete="off" placeholder="SYNC_TOKEN défini sur le Worker" @change="remember">
-        <span class="xsmall muted">Celui défini par <code>wrangler secret put SYNC_TOKEN</code>. Mémorisé dans ce navigateur, jamais exporté.</span>
+        <input v-model="tokenInput" type="password" autocomplete="off" placeholder="VUEJS_ASSURANCE_TOKEN défini sur le Worker" @change="remember">
+        <span class="xsmall muted">Celui défini par <code>wrangler secret put VUEJS_ASSURANCE_TOKEN</code>. Mémorisé dans ce navigateur, jamais exporté.</span>
       </label>
 
       <label class="field">

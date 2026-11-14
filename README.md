@@ -113,7 +113,7 @@ qui ne quitte jamais le navigateur et n'est jamais stockée).
   Un historique de révisions est gardé 30 jours dans KV.
 - **Activation** (sinon l'API répond « non configuré » et l'app reste 100 % locale) :
   1. `npx wrangler kv namespace create SYNC_KV` puis coller l'id dans `wrangler.toml` ;
-  2. `npx wrangler secret put SYNC_TOKEN` (longue chaîne aléatoire, à coller dans le dialogue) ;
+  2. `npx wrangler secret put VUEJS_ASSURANCE_TOKEN` (longue chaîne aléatoire, à coller dans le dialogue) ;
   3. recommandé : placer le domaine derrière **Cloudflare Access** (Zero Trust).
 - **Récupérer et fusionner** n'écrase jamais l'état local (union dossier par dossier, annulable
   Ctrl+Z, sauvegarde forcée prise avant la fusion).
