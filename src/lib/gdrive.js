@@ -305,3 +305,43 @@ export async function searchDriveFiles (token, query, { pageSize = 40, folderId 
     return { ok: false, error: 'Réponse Google Drive illisible' }
   }
 }
+
+const GOOGLE_NATIVE = 'application/vnd.google-apps.'
+const MAX_PIECE_BYTES = 200 * 1024 * 1024
+
+/**
+ * Récupère le contenu d'un fichier Drive par l'API (jeton lecture seule) : seul
+ * moyen pour un navigateur, les liens de partage n'étant pas lisibles en CORS.
+ * Les documents Google natifs sont exportés en PDF. Retourne
+ * { ok, blob, name, mimeType, exported } ou { ok: false, error }.
+ */
+export async function fetchDriveFile (token, fileId) {
+  const headers = { Authorization: `Bearer ${String(token || '').trim()}` }
+  const id = encodeURIComponent(fileId)
+  let meta
+  try {
+    const res = await fetch(`${API}/${id}?fields=id,name,mimeType,size&supportsAllDrives=true`, { headers })
+    if (!res.ok) {
+      const reasons = { 401: 'jeton expiré', 403: 'accès refusé', 404: 'fichier introuvable ou non partagé avec ce compte' }
+      return { ok: false, status: res.status, error: reasons[res.status] || `HTTP ${res.status}` }
+    }
+    meta = await res.json()
+  } catch {
+    return { ok: false, error: 'Drive injoignable' }
+  }
+  const native = String(meta.mimeType || '').startsWith(GOOGLE_NATIVE)
+  if (native && meta.mimeType === `${GOOGLE_NATIVE}folder`) return { ok: false, error: 'c\'est un dossier' }
+  if (Number(meta.size) > MAX_PIECE_BYTES) {
+    return { ok: false, error: `trop volumineux (${Math.round(Number(meta.size) / 1048576)} Mo)` }
+  }
+  const url = native
+    ? `${API}/${id}/export?mimeType=${encodeURIComponent('application/pdf')}`
+    : `${API}/${id}?alt=media&supportsAllDrives=true`
+  try {
+    const res = await fetch(url, { headers })
+    if (!res.ok) return { ok: false, status: res.status, error: native ? 'export PDF impossible pour ce document' : `lecture refusée (HTTP ${res.status})` }
+    return { ok: true, blob: await res.blob(), name: meta.name || '', mimeType: native ? 'application/pdf' : meta.mimeType, exported: native }
+  } catch {
+    return { ok: false, error: 'téléchargement interrompu' }
+  }
+}

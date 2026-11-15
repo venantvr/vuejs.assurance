@@ -149,6 +149,7 @@ const saveLabels = {
         <div v-if="openMenu === 'file'" class="menu">
           <div class="menu-label">Sauvegarder sur l'ordinateur</div>
           <button class="menu-item" @click="run(files.exportActive)"><span class="ico">⬇</span> Dossier courant (.json)<span class="grow" /><span class="xsmall muted">Ctrl+S</span></button>
+          <button class="menu-item" @click="run(() => ui.openDialog('zip'))"><span class="ico">🗜</span> Dossier + pièces (.zip)</button>
           <button class="menu-item" @click="run(files.exportAll)"><span class="ico">⬇</span> Tous les dossiers (.json)</button>
           <button class="menu-item" @click="run(files.exportCsv)"><span class="ico">⬇</span> Chronologie (.csv)</button>
           <div class="menu-sep" />

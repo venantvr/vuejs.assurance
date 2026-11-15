@@ -120,6 +120,17 @@ qui ne quitte jamais le navigateur et n'est jamais stockée).
 - Passphrase perdue = enveloppes distantes illisibles : les exports `.json` restent la vraie
   porte de sortie. Le jeton serveur est une préférence locale, jamais exporté.
 
+## Archive « dossier + pièces » (.zip)
+
+Fichier ▸ **Dossier + pièces (.zip)** : une archive autonome avec le **JSON** du dossier
+(réimportable), le **même dossier en Markdown** lisible (chronologie, parties, questions, liens
+relatifs vers les pièces), un dossier `pieces/` et un `LISEZMOI.txt` qui dit pour chaque pièce si elle
+est incluse ou pourquoi elle ne l'est pas. Les fichiers sont lus **par l'API Drive avec le jeton
+lecture seule** (un navigateur ne peut pas lire un simple lien de partage) : les documents Google
+natifs sont exportés en PDF, les fichiers de plus de 200 Mo et les liens hors Drive sont listés mais
+non copiés. Sans jeton Drive valide, l'export prévient et propose de continuer avec le JSON seul.
+Nom : `{compteur}_assurance_{référence}_avec-pieces_{date}.zip`.
+
 ## Données : rien n'est jamais perdu
 
 - Base locale : `localStorage`, clé `vuejs_assurance_db_v1`, enregistrement automatique 300 ms après

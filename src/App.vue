@@ -21,6 +21,7 @@ import { useUiStore } from './stores/ui.js'
 import { useHotkeys } from './composables/useHotkeys.js'
 import { useFiles } from './composables/useFiles.js'
 import BackupsDialog from './components/dialogs/BackupsDialog.vue'
+import ZipExportDialog from './components/dialogs/ZipExportDialog.vue'
 import SyncDialog from './components/dialogs/SyncDialog.vue'
 import { watch } from 'vue'
 
@@ -138,6 +139,7 @@ function confirmDeleteDossier () {
     <MailDialog v-if="ui.dialog === 'mail'" />
     <HelpDialog v-if="ui.dialog === 'help'" />
     <BackupsDialog v-if="ui.dialog === 'backups'" />
+    <ZipExportDialog v-if="ui.dialog === 'zip'" />
     <SyncDialog v-if="ui.dialog === 'sync'" />
     <ConfirmDialog v-if="ui.confirmBox" />
 
