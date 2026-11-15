@@ -604,3 +604,58 @@ p { margin: 0 0 0; }
   .meta-grid input, .meta-grid textarea { display: none !important; }
   .field-print { white-space: pre-wrap; word-break: break-word; font-size: 10pt; line-height: 1.4; }
 }
+
+/* ============================================================
+   Mobile
+   ============================================================ */
+
+/* une pièce = pastille + 🔗 + ⬇ : jamais séparées par un retour à la ligne */
+.pj-group { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
+.pj-group .pj-tag { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-group .badge-link { flex: none; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .hide-sm { display: none !important; }
+
+  /* barre du haut : une seule rangée */
+  .topbar-inner { padding: 6px 10px; gap: 5px; flex-wrap: nowrap; }
+  .topbar .btn { padding: 7px 9px; }
+  .topbar .btn-icon { padding: 7px 8px; }
+  .topbar .badge { padding: 2px 7px; }
+  .topbar .save-ok { display: none; }   /* « enregistré » est l'état normal : on n'alerte que sinon */
+  .topbar .dossier-wrap { flex: 1 1 0; min-width: 0; }
+  .topbar .dossier-wrap > .btn { width: 100%; max-width: none; justify-content: flex-start; overflow: hidden; }
+  .topbar .dossier-wrap > .btn .ellipsis { max-width: none; flex: 1; min-width: 0; text-align: left; }
+  .topbar .grow { display: none; }
+
+  main { padding: 12px 12px 72px; gap: 12px; }
+  .card-pad { padding: 13px 13px; }
+  .step { padding: 11px 12px; }
+  .timeline { padding-left: 20px; }
+  .tl-dot { left: -21px; }
+  .step-acts { opacity: 1; }          /* pas de survol au doigt : actions toujours visibles */
+
+  /* tiroir plein écran */
+  .drawer { width: 100%; }
+  .modal { width: 100% !important; max-height: 94vh; border-radius: 14px 14px 0 0; margin-bottom: 0; align-self: flex-end; }
+  .scrim { align-items: flex-end; }
+  .att-head { grid-template-columns: 96px minmax(0, 1fr) auto; }
+
+  /* zones tactiles confortables */
+  input, select, textarea { font-size: 16px; }   /* évite le zoom automatique d'iOS/Android à la saisie */
+  .btn-sm { padding: 6px 10px; }
+}
+
+/* ============================================================
+   Application installée (PWA) : zones sûres de l'écran
+   ============================================================ */
+.topbar { padding-top: env(safe-area-inset-top); }
+main { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.dlg-foot { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+.toasts { bottom: calc(18px + env(safe-area-inset-bottom)); }
+@media (max-width: 640px) {
+  main { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+}
+@media (display-mode: standalone) {
+  html, body { overscroll-behavior-y: contain; }   /* pas de « pull-to-refresh » qui rechargerait l'app par accident */
+}

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import AppTopBar from './components/AppTopBar.vue'
 import SummaryPanel from './components/SummaryPanel.vue'
@@ -41,6 +41,13 @@ const printDate = new Date().toLocaleString('fr-FR', {
 
 onMounted(() => {
   store.init()
+  // raccourcis d'icône Android (manifeste) : ?action=new-step | capture
+  const action = new URLSearchParams(location.search).get('action')
+  if (action) {
+    history.replaceState(null, '', location.pathname)
+    if (action === 'new-step') ui.openDrawer({})
+    else if (action === 'capture') nextTick(() => capture.value?.focus())
+  }
   if (preservedKey.value) {
     ui.toast(`Contenu local illisible mis de côté sous « ${preservedKey.value} » — rien n'a été effacé`, { type: 'error', duration: 12000 })
   }

@@ -50,7 +50,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
 
     <div class="step-foot" :class="{ 'print-hide': !step.impact && !attachments.length }">
       <span v-if="step.impact" class="badge">⇢ {{ step.impact }}</span>
-      <template v-for="att in attachments" :key="att.id">
+      <span v-for="att in attachments" :key="att.id" class="pj-group">
         <button
           class="pj-tag"
           :title="`Copier le nom de fichier : ${pjFilename(att, step.date)}`"
@@ -72,7 +72,7 @@ const hasOpenQuestion = computed(() => Boolean(props.step.question?.trim()) && !
           rel="noopener noreferrer"
           :title="`Télécharger ${att.name || 'la pièce'}`"
         >⬇</a>
-      </template>
+      </span>
       <span v-if="!attachments.length" class="badge badge-warn no-print">Aucune preuve rattachée</span>
     </div>
 

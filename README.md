@@ -120,6 +120,24 @@ qui ne quitte jamais le navigateur et n'est jamais stockée).
 - Passphrase perdue = enveloppes distantes illisibles : les exports `.json` restent la vraie
   porte de sortie. Le jeton serveur est une préférence locale, jamais exporté.
 
+## Application installable (Android, Chrome/Edge)
+
+L'application est une **PWA** : manifeste (`public/manifest.webmanifest`), icônes 192/512 px et
+« maskable » (`public/icons/`), service worker (`public/sw.js`). Chrome la juge installable
+(vérifié par `Page.getInstallabilityErrors`) et elle se **rouvre hors ligne**.
+
+- **Installer** : ouvrir le site en **https** dans Chrome Android → menu ⋮ ▸ *Installer l'application*,
+  ou Fichier ▸ « 📲 Installer l'application » (visible dès que le navigateur la propose). Raccourcis
+  d'icône (appui long) : *Nouvelle étape* et *Capture rapide*.
+- **Hors ligne** : réseau d'abord (4 s), cache en secours, de sorte qu'une mise à jour est vue dès
+  qu'on est en ligne. Le service worker ne touche **jamais** à `/api/*` ni aux autres origines
+  (Drive, authentification) et ne met en cache que des réponses 200 : aucune donnée n'y transite.
+  Les dossiers restent dans le `localStorage`.
+- **Cloudflare Access** : le manifeste est déclaré `crossorigin="use-credentials"` pour être servi
+  avec le cookie de session (sans quoi Access le redirigerait et l'installation échouerait).
+- Mobile : barre du haut sur une seule rangée, tiroir plein écran, pièces regroupées, saisie en 16 px
+  (pas de zoom automatique), zones sûres (encoche, barre de gestes) respectées.
+
 ## Archive « dossier + pièces » (.zip)
 
 Fichier ▸ **Dossier + pièces (.zip)** : une archive autonome avec le **JSON** du dossier

@@ -1,0 +1,38 @@
+{
+  "id": "./",
+  "name": "vuejs.assurance — journal d'audit de sinistre",
+  "short_name": "Assurance",
+  "description": "Chronologie factuelle de sinistre, pièces justificatives, parties et courrier à l'assureur.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2563eb",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouvelle étape",
+      "short_name": "Étape",
+      "description": "Ajouter une étape à la chronologie",
+      "url": "./?action=new-step",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Capture rapide",
+      "short_name": "Capture",
+      "description": "Saisir une ligne dans la chronologie",
+      "url": "./?action=capture",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

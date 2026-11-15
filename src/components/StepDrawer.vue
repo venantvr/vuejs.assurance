@@ -213,38 +213,45 @@ function confirmRemove () {
           </p>
 
           <div v-for="(att, index) in form.attachments" :key="att.id" class="att-row">
-            <div class="row att-head">
-              <span class="xsmall muted att-index">#{{ index + 1 }}</span>
-              <input v-model="att.code" class="att-code" placeholder="PJ-01">
-              <button class="btn btn-sm btn-ghost" type="button" title="Numéro suivant" @click="suggestPj(index)">№</button>
-              <input v-model="att.name" class="grow" placeholder="Nom de la pièce — ex : Facture recherche de fuite">
-              <button class="btn btn-sm btn-ghost btn-danger" type="button" title="Retirer cette pièce" @click="removeAttachment(index)">✕</button>
+            <div class="att-head">
+              <div class="att-code-wrap">
+                <input v-model="att.code" class="att-code" placeholder="PJ-01" :aria-label="`Code de la pièce ${index + 1}`">
+                <button class="att-num" type="button" title="Numéro suivant" aria-label="Numéro suivant" @click="suggestPj(index)">№</button>
+              </div>
+              <input v-model="att.name" class="att-name" placeholder="Nom de la pièce" :aria-label="`Nom de la pièce ${index + 1}`">
+              <button class="btn btn-sm btn-ghost btn-danger att-del" type="button" title="Retirer cette pièce" aria-label="Retirer cette pièce" @click="removeAttachment(index)">✕</button>
             </div>
-            <div class="row link-row">
-              <input v-model="att.url" class="grow" placeholder="Lien — https://drive.google.com/…">
+            <div class="att-link">
+              <input v-model="att.url" placeholder="Lien — https://drive.google.com/…" :aria-label="`Lien de la pièce ${index + 1}`">
               <a
                 v-if="safeUrl(att.url)"
-                class="btn btn-sm btn-ghost"
+                class="btn btn-sm btn-icon-sm"
                 :href="safeUrl(att.url)"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Ouvrir le lien dans un nouvel onglet"
+                title="Ouvrir le lien"
+                aria-label="Ouvrir le lien"
               >↗</a>
               <a
                 v-if="att.downloadUrl || driveDownloadLink(att.url)"
-                class="btn btn-sm btn-ghost"
+                class="btn btn-sm btn-icon-sm"
                 :href="att.downloadUrl || driveDownloadLink(att.url)"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Télécharger la pièce"
+                aria-label="Télécharger la pièce"
               >⬇</a>
-              <button class="btn btn-sm" type="button" @click="driveFor = driveFor === index ? -1 : index">
-                {{ driveFor === index ? 'Fermer Drive' : '🔍 Drive' }}
-              </button>
+              <button
+                class="btn btn-sm btn-icon-sm"
+                :class="{ 'btn-primary': driveFor === index }"
+                type="button"
+                :title="driveFor === index ? 'Fermer Drive' : 'Relier à un fichier Google Drive'"
+                @click="driveFor = driveFor === index ? -1 : index"
+              >🔍<span class="hide-sm">{{ driveFor === index ? ' Fermer' : ' Drive' }}</span></button>
             </div>
-            <div v-if="att.code || att.name" class="row xsmall mono filename">
-              {{ pjFilename(att, form.date) }}
-              <button class="btn btn-sm btn-ghost" type="button" @click="copyFilename(att)">⧉</button>
+            <div v-if="att.code || att.name" class="att-file">
+              <span class="mono" :title="pjFilename(att, form.date)">{{ pjFilename(att, form.date) }}</span>
+              <button class="btn btn-sm btn-ghost" type="button" title="Copier le nom de fichier" aria-label="Copier le nom de fichier" @click="copyFilename(att)">⧉</button>
             </div>
             <DrivePicker v-if="driveFor === index" @pick="linkDriveFile" />
           </div>
@@ -284,14 +291,22 @@ function confirmRemove () {
 .question-card { background: var(--violet-soft); border-color: color-mix(in srgb, var(--violet) 25%, transparent); }
 .question-field { margin-top: 9px; }
 .faded { opacity: .75; }
-.att-row { border-top: 1px dashed var(--border); padding-top: 9px; margin-top: 9px; display: flex; flex-direction: column; gap: 6px; }
+.att-row { border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
 .att-row:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
-.att-head { flex-wrap: nowrap; gap: 6px; }
-.att-index { width: 22px; flex: none; }
-.att-code { width: 86px; flex: none; }
-.att-head .grow { min-width: 0; }
-.link-row { gap: 6px; }
-.link-row .grow { min-width: 0; }
+.att-head { display: grid; grid-template-columns: 108px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.att-code-wrap { position: relative; }
+.att-code { width: 100%; padding-right: 30px; }
+.att-num {
+  position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+  border: 0; background: var(--bg-soft); color: var(--text-soft); cursor: pointer;
+  border-radius: 6px; font-size: 11px; padding: 3px 5px; line-height: 1;
+}
+.att-num:hover { background: var(--border); }
+.att-link { display: flex; align-items: center; gap: 6px; }
+.att-link input { flex: 1; min-width: 0; }
+.btn-icon-sm { padding: 6px 9px; flex: none; text-decoration: none; }
+.att-file { display: flex; align-items: center; gap: 6px; }
+.att-file .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-faint); }
 .cat-field { display: flex; align-items: center; gap: 2px; }
 .cat-field select { flex: 1; min-width: 0; }
 </style>

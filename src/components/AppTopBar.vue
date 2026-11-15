@@ -6,12 +6,19 @@ import { useUiStore } from '@/stores/ui.js'
 import { useFiles } from '@/composables/useFiles.js'
 import { formatRelative } from '@/lib/format.js'
 import { onClickOutside } from '@/composables/useClickOutside.js'
+import { useInstall } from '@/composables/useInstall.js'
 
 const emit = defineEmits(['new-dossier', 'rename-dossier', 'delete-dossier', 'open-mail'])
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const files = useFiles()
+const pwa = useInstall()
+
+async function installApp () {
+  const outcome = await pwa.install()
+  if (outcome === 'accepted') ui.toast('Application installée')
+}
 const { active, dossiersByRecent, trash, saveState, saveError, canUndo, canRedo } = storeToRefs(store)
 
 function restore (dossier) {
@@ -73,9 +80,9 @@ function onFileChosen (event) {
 }
 
 const saveLabels = {
-  saved: '✔ Enregistré',
-  pending: '… Enregistrement',
-  error: '✕ Stockage indisponible'
+  saved: ['✔', 'Enregistré'],
+  pending: ['…', 'Enregistrement'],
+  error: ['✕', 'Stockage indisponible']
 }
 </script>
 
@@ -84,17 +91,17 @@ const saveLabels = {
     <div class="topbar-inner">
       <div class="logo">
         <div class="logo-mark">⚖</div>
-        <div>
+        <div class="hide-sm">
           <h1>vuejs.assurance</h1>
           <p>Chronologie factuelle, pièces numérotées &amp; questions</p>
         </div>
       </div>
 
       <!-- Dossiers -->
-      <div v-if="active" class="menu-wrap">
+      <div v-if="active" class="menu-wrap dossier-wrap">
         <button class="btn" title="Changer de dossier" @click="toggle('dossiers')">
           📁 <b class="ellipsis">{{ active.name }}</b>
-          <span class="muted xsmall">{{ dossiersByRecent.length }}</span> ▾
+          <span class="muted xsmall hide-sm">{{ dossiersByRecent.length }}</span> ▾
         </button>
         <div v-if="openMenu === 'dossiers'" class="menu left">
           <div class="menu-label">Dossiers enregistrés localement</div>
@@ -136,16 +143,16 @@ const saveLabels = {
 
       <span
         class="badge"
-        :class="saveState === 'saved' ? 'badge-ok' : saveState === 'error' ? 'badge-SINISTRE' : 'badge-warn'"
+        :class="[saveState === 'saved' ? 'badge-ok save-ok' : saveState === 'error' ? 'badge-SINISTRE' : 'badge-warn']"
         :title="saveState === 'error' ? saveError : 'Enregistrement automatique dans le navigateur'"
-      >{{ saveLabels[saveState] }}</span>
+      >{{ saveLabels[saveState][0] }}<span class="hide-sm"> {{ saveLabels[saveState][1] }}</span></span>
 
       <button class="btn btn-icon" :disabled="!canUndo" title="Annuler (Ctrl+Z)" @click="store.undo() && ui.toast('Action annulée')">↶</button>
       <button class="btn btn-icon" :disabled="!canRedo" title="Rétablir (Ctrl+Maj+Z)" @click="store.redo() && ui.toast('Action rétablie')">↷</button>
 
       <!-- Fichier -->
       <div class="menu-wrap">
-        <button class="btn" title="Sauvegarde et import" @click="toggle('file')">💾 Fichier ▾</button>
+        <button class="btn" title="Sauvegarde et import" @click="toggle('file')">💾<span class="hide-sm"> Fichier</span> ▾</button>
         <div v-if="openMenu === 'file'" class="menu">
           <div class="menu-label">Sauvegarder sur l'ordinateur</div>
           <button class="menu-item" @click="run(files.exportActive)"><span class="ico">⬇</span> Dossier courant (.json)<span class="grow" /><span class="xsmall muted">Ctrl+S</span></button>
@@ -160,12 +167,13 @@ const saveLabels = {
           <button class="menu-item" @click="run(() => ui.openDialog('backups'))"><span class="ico">🕘</span> Sauvegardes automatiques…</button>
           <button class="menu-item" @click="run(() => ui.openDialog('sync'))"><span class="ico">☁</span> Synchronisation chiffrée…</button>
           <div class="menu-sep" />
+          <button v-if="pwa.canInstall.value" class="menu-item" @click="run(installApp)"><span class="ico">📲</span> Installer l'application</button>
           <button class="menu-item" @click="run(() => emit('open-mail'))"><span class="ico">✉</span> Générer le courrier / mail</button>
           <button class="menu-item" @click="run(printPage)"><span class="ico">🖨</span> Imprimer / PDF<span class="grow" /><span class="xsmall muted">Ctrl+P</span></button>
         </div>
       </div>
 
-      <button class="btn btn-icon" :title="ui.density === 'compact' ? 'Densité confortable' : 'Densité compacte'" @click="ui.toggleDensity()">
+      <button class="btn btn-icon hide-sm" :title="ui.density === 'compact' ? 'Densité confortable' : 'Densité compacte'" @click="ui.toggleDensity()">
         {{ ui.density === 'compact' ? '▤' : '▥' }}
       </button>
       <button class="btn btn-icon" :title="ui.theme === 'dark' ? 'Thème clair' : 'Thème sombre'" @click="ui.toggleTheme()">
