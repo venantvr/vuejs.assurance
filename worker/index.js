@@ -137,6 +137,23 @@ async function handleSync (request, env) {
     return json(200, { rev: record.rev, savedAt: record.savedAt })
   }
 
+  // Ménage manuel : supprime des révisions d'historique (jamais la plus récente).
+  if (request.method === 'DELETE') {
+    let body
+    try { body = await request.json() } catch { return json(400, { error: 'JSON invalide' }) }
+    const revs = Array.isArray(body?.revs) ? [...new Set(body.revs.map(Number))].filter((n) => Number.isInteger(n) && n > 0) : []
+    if (!revs.length || revs.length > 500) return json(400, { error: 'Liste de révisions invalide' })
+    const stored = await env.SYNC_KV.get(LATEST_KEY, 'json')
+    const latest = stored?.rev || 0
+    const deleted = []
+    for (const rev of revs) {
+      if (rev === latest) continue // la version courante n'est jamais supprimable
+      await env.SYNC_KV.delete(`${REV_PREFIX}${rev}`)
+      deleted.push(rev)
+    }
+    return json(200, { deleted, kept: revs.filter((r) => !deleted.includes(r)) })
+  }
+
   return json(405, { error: 'Méthode non autorisée' })
 }
 

@@ -12,7 +12,7 @@ import { useUiStore } from '@/stores/ui.js'
 import { useAutoSync, isHosted } from '@/composables/useAutoSync.js'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { decryptJson } from '@/lib/crypto.js'
-import { listRevisions, fetchRevision } from '@/lib/sync.js'
+import { listRevisions, fetchRevision, deleteRevisions } from '@/lib/sync.js'
 import { formatRelative } from '@/lib/format.js'
 
 const ui = useUiStore()
@@ -24,6 +24,46 @@ const history = ref(null)       // null = pas chargé ; sinon { revisions, reten
 const historyBusy = ref(false)
 const historyError = ref('')
 const restoring = ref(0)
+const selected = ref([])   // numéros de révisions cochés pour le ménage
+
+const latestRev = computed(() => history.value?.revisions?.[0]?.rev || 0)
+const selectable = computed(() => (history.value?.revisions || []).filter((r) => r.rev !== latestRev.value))
+const allSelected = computed(() => selectable.value.length > 0 && selected.value.length === selectable.value.length)
+
+function toggleAll () {
+  selected.value = allSelected.value ? [] : selectable.value.map((r) => r.rev)
+}
+
+/** Coche tout sauf la dernière révision de chaque jour. */
+function selectKeepOnePerDay () {
+  const dayOf = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-CA') : '') // jour LOCAL, comme l'affichage
+  const latest = history.value?.revisions?.[0]
+  const seen = new Set([dayOf(latest?.savedAt)]) // la version courante représente déjà son jour
+  const picked = []
+  for (const r of selectable.value) { // plus récentes d'abord : la première vue de chaque jour est gardée
+    const day = dayOf(r.savedAt)
+    if (day && !seen.has(day)) { seen.add(day); continue }
+    picked.push(r.rev)
+  }
+  selected.value = picked
+}
+
+function purgeSelected () {
+  const revs = [...selected.value]
+  if (!revs.length) return
+  ui.confirm({
+    title: 'Supprimer ces révisions ?',
+    message: `${revs.length} révision(s) de l'historique distant seront supprimées définitivement du KV. La version courante n'est jamais touchée ; vos dossiers locaux non plus.`,
+    confirmLabel: 'Supprimer',
+    onConfirm: async () => {
+      const res = await deleteRevisions(ui.syncToken, revs)
+      if (!res.ok) { historyError.value = res.error; return }
+      selected.value = []
+      notice.value = `${res.deleted.length} révision(s) supprimée(s)`
+      await loadHistory()
+    }
+  })
+}
 
 async function loadHistory () {
   if (!ui.syncToken.trim()) { historyError.value = 'Renseignez d\'abord le jeton'; return }
@@ -33,6 +73,7 @@ async function loadHistory () {
   historyBusy.value = false
   if (!res.ok) { historyError.value = res.error; return }
   history.value = res
+  selected.value = selected.value.filter((n) => res.revisions.some((r) => r.rev === n))
 }
 
 async function restoreRevision (item) {
@@ -152,8 +193,15 @@ async function syncNowClick () {
         <p v-if="historyError" class="msg error-text">⚠ {{ historyError }}</p>
         <template v-if="history">
           <p v-if="!history.revisions.length" class="msg muted">Aucune révision conservée.</p>
-          <ul v-else class="revs">
+          <div v-else class="bulk">
+            <label class="toggle"><input type="checkbox" :checked="allSelected" :disabled="!selectable.length" @change="toggleAll"><span>Tout</span></label>
+            <button class="btn btn-sm" :disabled="!selectable.length" title="Coche tout sauf la dernière révision de chaque jour" @click="selectKeepOnePerDay">Garder 1 par jour</button>
+            <span class="grow" />
+            <button class="btn btn-sm btn-danger" :disabled="!selected.length" @click="purgeSelected">🗑 Supprimer ({{ selected.length }})</button>
+          </div>
+          <ul v-if="history.revisions.length" class="revs">
             <li v-for="item in history.revisions" :key="item.rev">
+              <input v-model="selected" type="checkbox" :value="item.rev" :disabled="item.rev === latestRev" :title="item.rev === latestRev ? 'Version courante : non supprimable' : ''">
               <span class="rev-n">#{{ item.rev }}</span>
               <span class="rev-d">{{ fmtDate(item.savedAt) }}</span>
               <span class="muted xsmall">{{ fmtSize(item.size) }}</span>
@@ -207,6 +255,8 @@ async function syncNowClick () {
 .revs { list-style: none; margin: 0; padding: 0; max-height: 200px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .revs li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 12.5px; }
 .revs li + li { border-top: 1px solid var(--border); }
+.bulk { display: flex; align-items: center; gap: 10px; }
+.revs input[type=checkbox] { width: auto; margin: 0; }
 .rev-n { font-weight: 650; min-width: 38px; }
 .msg { margin: 0; font-size: 13px; }
 .error-text { color: var(--red); }

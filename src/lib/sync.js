@@ -85,3 +85,20 @@ export async function fetchRevision (token, rev) {
   if (!response.ok) return { ok: false, status: response.status, error: describe(response.status, body) }
   return { ok: true, rev: body?.rev, savedAt: body?.savedAt || null, envelope: body?.envelope || null }
 }
+
+/** Supprime des révisions d'historique (la plus récente est toujours conservée par le serveur). */
+export async function deleteRevisions (token, revs) {
+  let response
+  try {
+    response = await fetch(ENDPOINT, {
+      method: 'DELETE',
+      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revs })
+    })
+  } catch {
+    return { ok: false, error: 'Serveur injoignable' }
+  }
+  const body = await readJson(response)
+  if (!response.ok) return { ok: false, status: response.status, error: describe(response.status, body) }
+  return { ok: true, deleted: body?.deleted || [], kept: body?.kept || [] }
+}
