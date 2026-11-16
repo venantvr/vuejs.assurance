@@ -18,7 +18,11 @@
 
 const LATEST_KEY = 'sync:latest'
 const REV_PREFIX = 'sync:rev:'
-const HISTORY_TTL = 60 * 60 * 24 * 30 // 30 jours d'historique de révisions
+// Historique : conservé SANS expiration (usage juridique, procédures longues).
+// Pour ne pas saturer le KV avec la synchro automatique, une seule révision est
+// gardée par heure d'activité : la dernière de l'heure remplace les précédentes.
+const HISTORY_BUCKET_MS = 60 * 60 * 1000
+const LAST_HISTORY_KEY = 'sync:hist:last'
 const MAX_BODY = 5 * 1024 * 1024 // 5 Mo d'enveloppe chiffrée
 
 const JSON_HEADERS = {
@@ -73,7 +77,7 @@ async function handleSync (request, env) {
     if (url.searchParams.get('list')) {
       const revisions = []
       let cursor
-      for (let page = 0; page < 10; page++) {
+      for (let page = 0; page < 50; page++) {
         const res = await env.SYNC_KV.list({ prefix: REV_PREFIX, cursor })
         for (const key of res.keys) {
           const rev = Number(key.name.slice(REV_PREFIX.length))
@@ -83,7 +87,7 @@ async function handleSync (request, env) {
         cursor = res.cursor
       }
       revisions.sort((a, b) => b.rev - a.rev)
-      return json(200, { revisions, retentionDays: HISTORY_TTL / 86400 })
+      return json(200, { revisions, retentionDays: null, granularity: 'heure' })
     }
 
     // Une révision précise de l'historique (enveloppe chiffrée).
@@ -121,9 +125,15 @@ async function handleSync (request, env) {
     await env.SYNC_KV.put(LATEST_KEY, JSON.stringify(record))
     const serialized = JSON.stringify(record)
     await env.SYNC_KV.put(`${REV_PREFIX}${record.rev}`, serialized, {
-      expirationTtl: HISTORY_TTL,
       metadata: { savedAt: record.savedAt, size: serialized.length }
     })
+    // Même heure que la révision d'historique précédente : celle-ci est remplacée.
+    const bucket = Math.floor(Date.parse(record.savedAt) / HISTORY_BUCKET_MS)
+    const last = await env.SYNC_KV.get(LAST_HISTORY_KEY, 'json')
+    if (last && last.bucket === bucket && last.rev !== record.rev) {
+      await env.SYNC_KV.delete(`${REV_PREFIX}${last.rev}`)
+    }
+    await env.SYNC_KV.put(LAST_HISTORY_KEY, JSON.stringify({ rev: record.rev, bucket }))
     return json(200, { rev: record.rev, savedAt: record.savedAt })
   }
 

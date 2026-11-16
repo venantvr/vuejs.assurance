@@ -163,7 +163,7 @@ async function syncNowClick () {
               </button>
             </li>
           </ul>
-          <p class="xsmall muted">Chaque envoi crée une révision, conservée {{ history.retentionDays }} jours.</p>
+          <p class="xsmall muted">Révisions conservées sans limite de durée : une par heure d'activité (la dernière de l'heure).</p>
         </template>
       </section>
     </div>
