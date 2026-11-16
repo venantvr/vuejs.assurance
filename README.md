@@ -116,7 +116,9 @@ tout soit automatique).
 - **Worker** : `worker/index.js` répond sur `/api/sync` (même origine uniquement : aucun CORS).
   Chaque écriture porte une révision ; une écriture concurrente renvoie 409 et c'est le client,
   seul capable de déchiffrer, qui fusionne (mêmes règles sans perte que deux onglets) puis renvoie.
-  Un historique de révisions est gardé 30 jours dans KV.
+  Un historique de révisions est gardé 30 jours dans KV ; le dialogue de synchronisation le liste
+  (`GET /api/sync?list=1`, `?rev=N`) et permet de **restaurer une révision en copies datées** (déchiffrée dans
+  le navigateur, rien n'est écrasé).
 - **Activation** (sinon l'API répond « non configuré » et l'app reste 100 % locale) :
   1. `npx wrangler kv namespace create SYNC_KV` puis coller l'id dans `wrangler.toml` ;
   2. `npx wrangler secret put VUEJS_ASSURANCE_TOKEN` (longue chaîne aléatoire, à coller dans le dialogue) ;

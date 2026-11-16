@@ -59,3 +59,29 @@ export async function pushRemote (token, baseRev, envelope) {
   if (!response.ok) return { ok: false, status: response.status, error: describe(response.status, body) }
   return { ok: true, rev: body?.rev || 0, savedAt: body?.savedAt || null }
 }
+
+/** Liste des révisions conservées côté serveur (plus récentes d'abord). */
+export async function listRevisions (token) {
+  let response
+  try {
+    response = await fetch(`${ENDPOINT}?list=1`, { headers: authHeaders(token), cache: 'no-store' })
+  } catch {
+    return { ok: false, error: 'Serveur injoignable' }
+  }
+  const body = await readJson(response)
+  if (!response.ok) return { ok: false, status: response.status, error: describe(response.status, body) }
+  return { ok: true, revisions: body?.revisions || [], retentionDays: body?.retentionDays || 30 }
+}
+
+/** Une révision précise : { ok, rev, savedAt, envelope }. */
+export async function fetchRevision (token, rev) {
+  let response
+  try {
+    response = await fetch(`${ENDPOINT}?rev=${encodeURIComponent(rev)}`, { headers: authHeaders(token), cache: 'no-store' })
+  } catch {
+    return { ok: false, error: 'Serveur injoignable' }
+  }
+  const body = await readJson(response)
+  if (!response.ok) return { ok: false, status: response.status, error: describe(response.status, body) }
+  return { ok: true, rev: body?.rev, savedAt: body?.savedAt || null, envelope: body?.envelope || null }
+}

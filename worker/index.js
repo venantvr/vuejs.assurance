@@ -17,6 +17,7 @@
  */
 
 const LATEST_KEY = 'sync:latest'
+const REV_PREFIX = 'sync:rev:'
 const HISTORY_TTL = 60 * 60 * 24 * 30 // 30 jours d'historique de révisions
 const MAX_BODY = 5 * 1024 * 1024 // 5 Mo d'enveloppe chiffrée
 
@@ -66,6 +67,34 @@ async function handleSync (request, env) {
   }
 
   if (request.method === 'GET') {
+    const url = new URL(request.url)
+
+    // Historique : liste des révisions conservées (métadonnées seulement, rien de lisible).
+    if (url.searchParams.get('list')) {
+      const revisions = []
+      let cursor
+      for (let page = 0; page < 10; page++) {
+        const res = await env.SYNC_KV.list({ prefix: REV_PREFIX, cursor })
+        for (const key of res.keys) {
+          const rev = Number(key.name.slice(REV_PREFIX.length))
+          if (Number.isFinite(rev)) revisions.push({ rev, savedAt: key.metadata?.savedAt || null, size: key.metadata?.size || 0 })
+        }
+        if (res.list_complete) break
+        cursor = res.cursor
+      }
+      revisions.sort((a, b) => b.rev - a.rev)
+      return json(200, { revisions, retentionDays: HISTORY_TTL / 86400 })
+    }
+
+    // Une révision précise de l'historique (enveloppe chiffrée).
+    const wanted = url.searchParams.get('rev')
+    if (wanted) {
+      const rev = Number(wanted)
+      if (!Number.isInteger(rev) || rev < 1) return json(400, { error: 'Révision invalide' })
+      const old = await env.SYNC_KV.get(`${REV_PREFIX}${rev}`, 'json')
+      return old ? json(200, old) : json(404, { error: 'Révision expirée ou inconnue' })
+    }
+
     const stored = await env.SYNC_KV.get(LATEST_KEY, 'json')
     if (!stored) return json(200, { rev: 0, envelope: null })
     return json(200, stored)
@@ -90,7 +119,11 @@ async function handleSync (request, env) {
 
     const record = { rev: currentRev + 1, savedAt: new Date().toISOString(), envelope: body.envelope }
     await env.SYNC_KV.put(LATEST_KEY, JSON.stringify(record))
-    await env.SYNC_KV.put(`sync:rev:${record.rev}`, JSON.stringify(record), { expirationTtl: HISTORY_TTL })
+    const serialized = JSON.stringify(record)
+    await env.SYNC_KV.put(`${REV_PREFIX}${record.rev}`, serialized, {
+      expirationTtl: HISTORY_TTL,
+      metadata: { savedAt: record.savedAt, size: serialized.length }
+    })
     return json(200, { rev: record.rev, savedAt: record.savedAt })
   }
 
