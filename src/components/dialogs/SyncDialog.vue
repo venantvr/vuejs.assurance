@@ -116,6 +116,11 @@ async function syncNowClick () {
   letter-spacing: .06em; color: var(--text-faint);
 }
 .field input { width: 100%; }
+@media (min-width: 641px) {
+  .secret input { font-size: 12px; padding: 6px 9px; }
+}
+.secret input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.secret input::placeholder { font-family: inherit; }
 .field small { font-size: 11.5px; line-height: 1.4; color: var(--text-faint); }
 .options { display: flex; flex-wrap: wrap; gap: 8px 22px; }
 .toggle {
