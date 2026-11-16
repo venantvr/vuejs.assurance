@@ -24,10 +24,12 @@ import BackupsDialog from './components/dialogs/BackupsDialog.vue'
 import ZipExportDialog from './components/dialogs/ZipExportDialog.vue'
 import SyncDialog from './components/dialogs/SyncDialog.vue'
 import { watch } from 'vue'
+import { useAutoSync, isHosted } from './composables/useAutoSync.js'
 
 const store = useDossiersStore()
 const ui = useUiStore()
 const files = useFiles()
+const autoSync = useAutoSync()
 const { active, saveState, saveError, preservedKey, externalEvents } = storeToRefs(store)
 
 const capture = ref(null)
@@ -41,6 +43,12 @@ const printDate = new Date().toLocaleString('fr-FR', {
 
 onMounted(() => {
   store.init()
+  autoSync.start()
+  // Version hébergée sans synchro réglée : on propose le réglage au premier lancement.
+  if (isHosted() && !autoSync.configured() && !ui.syncPrompted) {
+    ui.markSyncPrompted()
+    nextTick(() => ui.openDialog('sync'))
+  }
   // raccourcis d'icône Android (manifeste) : ?action=new-step | capture
   const action = new URLSearchParams(location.search).get('action')
   if (action) {

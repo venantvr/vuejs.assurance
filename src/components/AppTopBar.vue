@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
@@ -7,6 +7,7 @@ import { useFiles } from '@/composables/useFiles.js'
 import { formatRelative } from '@/lib/format.js'
 import { onClickOutside } from '@/composables/useClickOutside.js'
 import { useInstall } from '@/composables/useInstall.js'
+import { isHosted } from '@/composables/useAutoSync.js'
 
 const emit = defineEmits(['new-dossier', 'rename-dossier', 'delete-dossier', 'open-mail'])
 
@@ -79,6 +80,20 @@ function onFileChosen (event) {
   if (file) files.readJsonFile(file, importMode.value)
 }
 
+const syncVisible = isHosted()
+const syncMap = {
+  off: ['☁', 'Synchro à régler', 'badge-warn', 'Synchronisation non configurée : cliquez pour la régler'],
+  idle: ['☁✔', 'Synchronisé', 'badge-ok', 'Synchronisé avec le KV Cloudflare (chiffré)'],
+  syncing: ['⟳', 'Synchro…', 'badge-warn', 'Synchronisation en cours'],
+  offline: ['☁✕', 'Hors ligne', 'badge-warn', 'Serveur injoignable : nouvel essai automatique'],
+  error: ['☁⚠', 'Erreur synchro', 'badge-SINISTRE', 'Erreur de synchronisation : cliquez pour voir']
+}
+const syncState = computed(() => syncMap[ui.syncStatus] || syncMap.off)
+const syncIcon = computed(() => syncState.value[0])
+const syncLabel = computed(() => syncState.value[1])
+const syncClass = computed(() => [syncState.value[2], ui.syncStatus === 'idle' ? 'save-ok' : ''])
+const syncTitle = computed(() => ui.syncError ? `${syncState.value[3]} — ${ui.syncError}` : syncState.value[3])
+
 const saveLabels = {
   saved: ['✔', 'Enregistré'],
   pending: ['…', 'Enregistrement'],
@@ -146,6 +161,14 @@ const saveLabels = {
         :class="[saveState === 'saved' ? 'badge-ok save-ok' : saveState === 'error' ? 'badge-SINISTRE' : 'badge-warn']"
         :title="saveState === 'error' ? saveError : 'Enregistrement automatique dans le navigateur'"
       >{{ saveLabels[saveState][0] }}<span class="hide-sm"> {{ saveLabels[saveState][1] }}</span></span>
+
+      <button
+        v-if="syncVisible"
+        class="badge sync-badge"
+        :class="syncClass"
+        :title="syncTitle"
+        @click="ui.openDialog('sync')"
+      >{{ syncIcon }}<span class="hide-sm"> {{ syncLabel }}</span></button>
 
       <button class="btn btn-icon" :disabled="!canUndo" title="Annuler (Ctrl+Z)" @click="store.undo() && ui.toast('Action annulée')">↶</button>
       <button class="btn btn-icon" :disabled="!canRedo" title="Rétablir (Ctrl+Maj+Z)" @click="store.redo() && ui.toast('Action rétablie')">↷</button>

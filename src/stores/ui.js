@@ -34,8 +34,21 @@ export const useUiStore = defineStore('ui', () => {
   /** Dernière révision serveur connue (gestion des écritures concurrentes). */
   const syncRev = ref(Number.isFinite(prefs.syncRev) ? prefs.syncRev : 0)
   const syncAt = ref(typeof prefs.syncAt === 'string' ? prefs.syncAt : '')
-  /** Passphrase de chiffrement : EN MÉMOIRE SEULEMENT, jamais stockée nulle part. */
-  const syncPassphrase = ref('')
+  /**
+   * Passphrase de chiffrement, mémorisée dans ce navigateur (préférences locales,
+   * jamais exportée ni envoyée) pour que la synchronisation soit automatique.
+   * La base en clair est déjà dans le même localStorage : rien d'exposé en plus.
+   */
+  const syncPassphrase = ref(typeof prefs.syncPassphrase === 'string' ? prefs.syncPassphrase : '')
+  /** Synchronisation automatique active (par défaut dès que jeton + passphrase sont posés). */
+  const syncAuto = ref(prefs.syncAuto !== false)
+  /** Empreinte de la base lors de la dernière synchronisation réussie. */
+  const syncFp = ref(typeof prefs.syncFp === 'string' ? prefs.syncFp : '')
+  /** Le réglage de la synchronisation a déjà été proposé sur cet appareil. */
+  const syncPrompted = ref(prefs.syncPrompted === true)
+  /** État courant : 'off' | 'idle' | 'syncing' | 'offline' | 'error' (non persisté). */
+  const syncStatus = ref('off')
+  const syncError = ref('')
 
   // Filtres de la chronologie
   const search = ref('')
@@ -101,10 +114,26 @@ export const useUiStore = defineStore('ui', () => {
     savePrefs({ ...loadPrefs(), syncToken: syncToken.value })
   }
 
-  function setSyncState ({ rev, at } = {}) {
+  function setSyncState ({ rev, at, fp } = {}) {
     if (Number.isFinite(rev)) syncRev.value = rev
     if (at !== undefined) syncAt.value = at || ''
-    savePrefs({ ...loadPrefs(), syncRev: syncRev.value, syncAt: syncAt.value })
+    if (typeof fp === 'string') syncFp.value = fp
+    savePrefs({ ...loadPrefs(), syncRev: syncRev.value, syncAt: syncAt.value, syncFp: syncFp.value })
+  }
+
+  function setSyncPassphrase (value) {
+    syncPassphrase.value = String(value || '')
+    savePrefs({ ...loadPrefs(), syncPassphrase: syncPassphrase.value })
+  }
+
+  function markSyncPrompted () {
+    syncPrompted.value = true
+    savePrefs({ ...loadPrefs(), syncPrompted: true })
+  }
+
+  function setSyncAuto (value) {
+    syncAuto.value = Boolean(value)
+    savePrefs({ ...loadPrefs(), syncAuto: syncAuto.value })
   }
 
   function toggleKpis () {
@@ -182,6 +211,14 @@ export const useUiStore = defineStore('ui', () => {
     syncAt,
     setSyncState,
     syncPassphrase,
+    setSyncPassphrase,
+    syncAuto,
+    syncPrompted,
+    markSyncPrompted,
+    setSyncAuto,
+    syncFp,
+    syncStatus,
+    syncError,
     search,
     category,
     onlyOpenQuestions,

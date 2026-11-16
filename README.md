@@ -100,12 +100,18 @@ sélecteur l'indique et propose « renouveler ». Seul le **lien** (`webViewLink
 dossier — jamais le fichier ni le jeton. Les liens s'ouvrent depuis la carte d'étape (🔗 consulter, ⬇ télécharger) et sont repris dans le
 CSV (colonnes « Lien PJ » et « Téléchargement PJ ») et le courrier.
 
-## Synchronisation chiffrée (Cloudflare, facultative)
+## Synchronisation chiffrée (Cloudflare, automatique)
 
-Fichier ▸ **Synchronisation chiffrée…** : la base peut être sauvegardée/synchronisée sur le
+Sur la version hébergée, la base se **synchronise toute seule** avec le KV Cloudflare : au démarrage,
+au retour sur l'onglet, à la reconnexion, chaque minute et ~3 s après chaque modification (cycle :
+récupérer → fusionner sans rien écraser → envoyer si la base a changé). Réglage **une seule fois par
+appareil** (jeton + passphrase, proposé au premier lancement, ensuite via la pastille ☁ de la barre du
+haut ou Fichier ▸ Synchronisation). Pastille : ☁✔ synchronisé · ⟳ en cours · ☁✕ hors ligne (nouvel essai
+automatique) · ☁⚠ erreur (jeton ou passphrase). Décochable dans le dialogue. Base sauvegardée/synchronisée sur le
 déploiement Cloudflare existant, **chiffrée de bout en bout** — le serveur ne stocke que des
 enveloppes AES-GCM 256 illisibles (clé dérivée d'une passphrase par PBKDF2 600 k itérations,
-qui ne quitte jamais le navigateur et n'est jamais stockée).
+qui ne quitte jamais le navigateur ; elle est mémorisée dans le navigateur, comme vos dossiers, pour que
+tout soit automatique).
 
 - **Worker** : `worker/index.js` répond sur `/api/sync` (même origine uniquement : aucun CORS).
   Chaque écriture porte une révision ; une écriture concurrente renvoie 409 et c'est le client,
@@ -117,8 +123,8 @@ qui ne quitte jamais le navigateur et n'est jamais stockée).
   3. recommandé : placer le domaine derrière **Cloudflare Access** (Zero Trust).
 - **Récupérer et fusionner** n'écrase jamais l'état local (union dossier par dossier, annulable
   Ctrl+Z, sauvegarde forcée prise avant la fusion).
-- Passphrase perdue = enveloppes distantes illisibles : les exports `.json` restent la vraie
-  porte de sortie. Le jeton serveur est une préférence locale, jamais exporté.
+- Passphrase perdue sur tous les appareils = enveloppes distantes illisibles : les exports `.json` restent la
+  vraie porte de sortie. Jeton et passphrase sont des préférences locales, jamais exportées.
 
 ## Application installable (Android, Chrome/Edge)
 
