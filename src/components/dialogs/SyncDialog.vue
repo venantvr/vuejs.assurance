@@ -61,11 +61,12 @@ function purgeSelected () {
       deleting.value = true
       historyError.value = ''
       let totalDeleted = 0
+      let failure = ''
       try {
         for (let i = 0; i < revs.length; i += DELETE_BATCH) {
           const res = await deleteRevisions(ui.syncToken, revs.slice(i, i + DELETE_BATCH))
           if (!res.ok) {
-            historyError.value = totalDeleted
+            failure = totalDeleted
               ? `${res.error} (${totalDeleted} révision(s) déjà supprimée(s))`
               : res.error
             break
@@ -75,6 +76,8 @@ function purgeSelected () {
         selected.value = []
         if (totalDeleted) notice.value = `${totalDeleted} révision(s) supprimée(s)`
         await loadHistory()
+        // loadHistory remet historyError à vide : l'échec de la purge primait.
+        if (failure) historyError.value = failure
       } finally {
         deleting.value = false
       }

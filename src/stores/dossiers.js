@@ -286,26 +286,23 @@ export const useDossiersStore = defineStore('dossiers', () => {
   }
 
   function init () {
-    const hadRaw = Boolean(readRawDb())
     const { db, preserved } = loadDb()
     preservedKey.value = preserved
     knownRev = preserved ? null : db.rev
-    let needsPersist = !hadRaw || Boolean(preserved)
     if (!db.dossiers.length && !db.trash.length) {
       db.dossiers = [demoDossier()]
       db.activeId = db.dossiers[0].id
-      needsPersist = true
     }
     // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
     const used = db.dossiers.flatMap((d) => d.steps.flatMap((step) => step.actors))
-    const nextActors = sanitizeActors([...(db.actors || []), ...used])
-    if (nextActors.length !== (db.actors || []).length) {
-      db.actors = nextActors
-      needsPersist = true
-    }
+    db.actors = sanitizeActors([...(db.actors || []), ...used])
     loadIntoState(db)
     bindLifecycle()
-    if (needsPersist) persistNow()
+    // Écriture systématique : elle fixe sur disque ce que la lecture a migré
+    // ou complété (ancienne clé, deletedAt manquants, catalogue d'acteurs) et
+    // fait tourner les sauvegardes. L'empreinte de synchronisation ignore la
+    // révision : cette écriture ne provoque aucun envoi distant inutile.
+    persistNow()
   }
 
   /* --------------------------------------------------------------- dossiers */
@@ -736,7 +733,12 @@ export const useDossiersStore = defineStore('dossiers', () => {
   function isUntouchedDemo () {
     if (dossiers.value.length !== 1 || trash.value.length || customCategories.value.length) return false
     const only = dossiers.value[0]
-    return only.id === 'dos-demo' && only.createdAt === only.updatedAt
+    if (only.id !== 'dos-demo' || only.createdAt !== only.updatedAt) return false
+    // Le catalogue d'acteurs est semé par la démo à l'amorçage : il ne doit
+    // rien contenir d'autre, sinon c'est une saisie locale à ne pas perdre.
+    const key = (name) => String(name || '').trim().toLowerCase()
+    const seeded = new Set(only.steps.flatMap((s) => s.actors).map(key))
+    return actors.value.every((a) => seeded.has(key(a)))
   }
 
   /**

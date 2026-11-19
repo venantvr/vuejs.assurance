@@ -43,6 +43,7 @@ export function fingerprint (db) {
 let started = false
 let running = false
 let again = false
+let configDirty = false
 let lastRun = 0
 let timer = null
 
@@ -57,8 +58,18 @@ export function useAutoSync () {
   const configured = () => Boolean(ui.syncToken.trim() && ui.syncPassphrase.trim())
 
   function refreshIdle () {
-    if (running) return
     ui.syncStatus = isHosted() && configured() && ui.syncAuto ? 'idle' : 'off'
+  }
+
+  /**
+   * Prise en compte d'un changement de configuration. Pendant un cycle, le
+   * statut appartient au cycle : la réaction est différée (et non perdue)
+   * jusqu'à sa fin, sinon un jeton corrigé ne réarmerait jamais d'essai.
+   */
+  function applyConfigChange () {
+    configDirty = false
+    refreshIdle()
+    if (ui.syncStatus === 'idle') { ui.syncError = ''; schedule(500) }
   }
 
   function fail (status, message) {
@@ -131,6 +142,7 @@ export function useAutoSync () {
         if (res.conflict) {
           rev = res.rev
           remoteSavedAt = res.savedAt
+          remoteFp = null
           if (res.envelope) {
             const remote = await decryptRemote(res.envelope)
             const normalized = normalizeDb(remote)
@@ -153,7 +165,10 @@ export function useAutoSync () {
       return { ok: false, message }
     } finally {
       running = false
-      if (again) { again = false; schedule(DEBOUNCE_MS) }
+      const retry = again
+      again = false
+      if (configDirty) applyConfigChange()
+      else if (retry) schedule(DEBOUNCE_MS)
     }
   }
 
@@ -176,9 +191,8 @@ export function useAutoSync () {
 
     // Configuration modifiée (jeton, passphrase, interrupteur) : on repart, erreur effacée.
     watch(() => [ui.syncToken, ui.syncPassphrase, ui.syncAuto], () => {
-      if (running) return
-      refreshIdle()
-      if (ui.syncStatus === 'idle') { ui.syncError = ''; schedule(500) }
+      if (running) { configDirty = true; return }
+      applyConfigChange()
     })
 
     const wake = () => {
