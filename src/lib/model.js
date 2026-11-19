@@ -380,7 +380,11 @@ export function cloneDossier (dossier, { newIds = true, name } = {}) {
   if (name) copy.name = name
   if (newIds) {
     copy.id = uid('dos')
-    copy.steps.forEach((s) => { s.id = uid('step') })
+    copy.steps.forEach((s) => {
+      s.id = uid('step')
+      s.attachments.forEach((a) => { a.id = uid('pj') })
+    })
+    copy.parties.forEach((p) => { p.id = uid('party') })
     copy.globalQuestions.forEach((q) => { q.id = uid('gq') })
   }
   copy.createdAt = copy.updatedAt = new Date().toISOString()

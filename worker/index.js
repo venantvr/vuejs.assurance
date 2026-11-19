@@ -13,7 +13,13 @@
  * Modèle de concurrence : chaque écriture porte le numéro de révision connu
  * du client (`baseRev`). S'il ne correspond plus à la révision stockée, le
  * serveur répond 409 avec l'enveloppe courante ; le client (qui, lui, sait
- * déchiffrer) fusionne puis renvoie. Rien n'est jamais écrasé à l'aveugle.
+ * déchiffrer) fusionne puis renvoie.
+ *
+ * Limite connue de Cloudflare KV : le stockage KV est à cohérence éventuelle
+ * (sans compare-and-swap atomique, propagation inter-PoP jusqu'à ~60 s). Ce
+ * contrôle optimiste protège les accès séquentiels et décalés, mais pas deux
+ * écritures quasi simultanées sur des PoP distincts ; pour un verrouillage
+ * strictement linéarisable, un Durable Object ou D1 serait nécessaire.
  */
 
 const LATEST_KEY = 'sync:latest'
@@ -24,6 +30,9 @@ const REV_PREFIX = 'sync:rev:'
 const HISTORY_BUCKET_MS = 60 * 60 * 1000
 const LAST_HISTORY_KEY = 'sync:hist:last'
 const MAX_BODY = 5 * 1024 * 1024 // 5 Mo d'enveloppe chiffrée
+const MAX_DELETE_BODY = 64 * 1024
+// Limite basse pour rester sous le plafond de 50 sous-requêtes du plan Workers Free.
+const MAX_DELETE_BATCH = 40
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -45,6 +54,41 @@ function tokenMatches (given, expected) {
   let diff = 0
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
   return diff === 0
+}
+
+/** Lit un corps JSON en bornant strictement le nombre d'octets lus en mémoire. */
+async function readBoundedJson (request, maxBytes) {
+  const cl = Number(request.headers.get('Content-Length') || 0)
+  if (cl > maxBytes) return { status: 413, error: 'Enveloppe trop volumineuse' }
+  if (!request.body) return { status: 400, error: 'JSON invalide' }
+  const reader = request.body.getReader()
+  const chunks = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > maxBytes) {
+        try { await reader.cancel() } catch { /* ignore */ }
+        return { status: 413, error: 'Enveloppe trop volumineuse' }
+      }
+      chunks.push(value)
+    }
+  } catch {
+    return { status: 400, error: 'Corps de requête illisible' }
+  }
+  const merged = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  try {
+    return { body: JSON.parse(new TextDecoder().decode(merged)) }
+  } catch {
+    return { status: 400, error: 'JSON invalide' }
+  }
 }
 
 /** L'enveloppe doit ressembler à du chiffré produit par le client, rien d'autre. */
@@ -105,15 +149,12 @@ async function handleSync (request, env) {
   }
 
   if (request.method === 'PUT') {
-    const length = Number(request.headers.get('Content-Length') || 0)
-    if (length > MAX_BODY) return json(413, { error: 'Enveloppe trop volumineuse' })
-
-    let body
-    try { body = await request.json() } catch { return json(400, { error: 'JSON invalide' }) }
+    const parsed = await readBoundedJson(request, MAX_BODY)
+    if (parsed.error) return json(parsed.status, { error: parsed.error })
+    const { body } = parsed
     if (!isEnvelope(body?.envelope)) return json(400, { error: 'Enveloppe chiffrée attendue' })
-    if (JSON.stringify(body.envelope).length > MAX_BODY) return json(413, { error: 'Enveloppe trop volumineuse' })
 
-    const baseRev = Number.isFinite(body.baseRev) ? body.baseRev : 0
+    const baseRev = Number.isInteger(body.baseRev) && body.baseRev >= 0 ? body.baseRev : 0
     const stored = await env.SYNC_KV.get(LATEST_KEY, 'json')
     const currentRev = stored?.rev || 0
     if (baseRev !== currentRev) {
@@ -122,8 +163,8 @@ async function handleSync (request, env) {
     }
 
     const record = { rev: currentRev + 1, savedAt: new Date().toISOString(), envelope: body.envelope }
-    await env.SYNC_KV.put(LATEST_KEY, JSON.stringify(record))
     const serialized = JSON.stringify(record)
+    await env.SYNC_KV.put(LATEST_KEY, serialized)
     await env.SYNC_KV.put(`${REV_PREFIX}${record.rev}`, serialized, {
       metadata: { savedAt: record.savedAt, size: serialized.length }
     })
@@ -139,19 +180,18 @@ async function handleSync (request, env) {
 
   // Ménage manuel : supprime des révisions d'historique (jamais la plus récente).
   if (request.method === 'DELETE') {
-    let body
-    try { body = await request.json() } catch { return json(400, { error: 'JSON invalide' }) }
+    const parsed = await readBoundedJson(request, MAX_DELETE_BODY)
+    if (parsed.error) return json(parsed.status, { error: parsed.error })
+    const { body } = parsed
     const revs = Array.isArray(body?.revs) ? [...new Set(body.revs.map(Number))].filter((n) => Number.isInteger(n) && n > 0) : []
-    if (!revs.length || revs.length > 500) return json(400, { error: 'Liste de révisions invalide' })
+    if (!revs.length || revs.length > MAX_DELETE_BATCH) {
+      return json(400, { error: `Liste de révisions invalide (1 à ${MAX_DELETE_BATCH} par requête)` })
+    }
     const stored = await env.SYNC_KV.get(LATEST_KEY, 'json')
     const latest = stored?.rev || 0
-    const deleted = []
-    for (const rev of revs) {
-      if (rev === latest) continue // la version courante n'est jamais supprimable
-      await env.SYNC_KV.delete(`${REV_PREFIX}${rev}`)
-      deleted.push(rev)
-    }
-    return json(200, { deleted, kept: revs.filter((r) => !deleted.includes(r)) })
+    const toDelete = revs.filter((rev) => rev !== latest)
+    await Promise.all(toDelete.map((rev) => env.SYNC_KV.delete(`${REV_PREFIX}${rev}`)))
+    return json(200, { deleted: toDelete, kept: revs.filter((r) => r === latest) })
   }
 
   return json(405, { error: 'Méthode non autorisée' })

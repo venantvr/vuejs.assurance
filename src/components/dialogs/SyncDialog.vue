@@ -20,8 +20,10 @@ const store = useDossiersStore()
 const sync = useAutoSync()
 
 /* ---- historique distant ---- */
+const DELETE_BATCH = 40
 const history = ref(null)       // null = pas chargé ; sinon { revisions, retentionDays }
 const historyBusy = ref(false)
+const deleting = ref(false)
 const historyError = ref('')
 const restoring = ref(0)
 const selected = ref([])   // numéros de révisions cochés pour le ménage
@@ -50,17 +52,32 @@ function selectKeepOnePerDay () {
 
 function purgeSelected () {
   const revs = [...selected.value]
-  if (!revs.length) return
+  if (!revs.length || deleting.value) return
   ui.confirm({
     title: 'Supprimer ces révisions ?',
     message: `${revs.length} révision(s) de l'historique distant seront supprimées définitivement du KV. La version courante n'est jamais touchée ; vos dossiers locaux non plus.`,
     confirmLabel: 'Supprimer',
     onConfirm: async () => {
-      const res = await deleteRevisions(ui.syncToken, revs)
-      if (!res.ok) { historyError.value = res.error; return }
-      selected.value = []
-      notice.value = `${res.deleted.length} révision(s) supprimée(s)`
-      await loadHistory()
+      deleting.value = true
+      historyError.value = ''
+      let totalDeleted = 0
+      try {
+        for (let i = 0; i < revs.length; i += DELETE_BATCH) {
+          const res = await deleteRevisions(ui.syncToken, revs.slice(i, i + DELETE_BATCH))
+          if (!res.ok) {
+            historyError.value = totalDeleted
+              ? `${res.error} (${totalDeleted} révision(s) déjà supprimée(s))`
+              : res.error
+            break
+          }
+          totalDeleted += res.deleted.length
+        }
+        selected.value = []
+        if (totalDeleted) notice.value = `${totalDeleted} révision(s) supprimée(s)`
+        await loadHistory()
+      } finally {
+        deleting.value = false
+      }
     }
   })
 }
@@ -197,7 +214,9 @@ async function syncNowClick () {
             <label class="toggle"><input type="checkbox" :checked="allSelected" :disabled="!selectable.length" @change="toggleAll"><span>Tout</span></label>
             <button class="btn btn-sm" :disabled="!selectable.length" title="Coche tout sauf la dernière révision de chaque jour" @click="selectKeepOnePerDay">Garder 1 par jour</button>
             <span class="grow" />
-            <button class="btn btn-sm btn-danger" :disabled="!selected.length" @click="purgeSelected">🗑 Supprimer ({{ selected.length }})</button>
+            <button class="btn btn-sm btn-danger" :disabled="!selected.length || deleting" @click="purgeSelected">
+              {{ deleting ? 'Suppression…' : `🗑 Supprimer (${selected.length})` }}
+            </button>
           </div>
           <ul v-if="history.revisions.length" class="revs">
             <li v-for="item in history.revisions" :key="item.rev">

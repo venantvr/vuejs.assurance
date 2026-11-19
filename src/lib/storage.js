@@ -141,9 +141,9 @@ const newer = (a, b) => (String(b.updatedAt || '') > String(a.updatedAt || '') ?
 
 /**
  * Deux versions d'un même dossier : la plus récente fixe le cadre (synthèse,
- * nom, tri…), mais aucune étape ni question présente d'un côté n'est perdue —
- * l'union par identifiant l'emporte sur la suppression. Dans la fenêtre de
- * course entre deux onglets, ressusciter vaut mieux que perdre.
+ * nom, tri…), mais aucune étape, partie ni question présente d'un côté n'est
+ * perdue — l'union par identifiant l'emporte sur la suppression. Dans la
+ * fenêtre de course entre deux onglets, ressusciter vaut mieux que perdre.
  */
 function mergeDossier (a, b) {
   const base = newer(a, b)
@@ -151,6 +151,8 @@ function mergeDossier (a, b) {
   const merged = { ...base }
   const stepIds = new Set(base.steps.map((s) => s.id))
   merged.steps = [...base.steps, ...other.steps.filter((s) => !stepIds.has(s.id))]
+  const partyIds = new Set((base.parties || []).map((p) => p.id))
+  merged.parties = [...(base.parties || []), ...(other.parties || []).filter((p) => !partyIds.has(p.id))]
   const qIds = new Set(base.globalQuestions.map((q) => q.id))
   merged.globalQuestions = [...base.globalQuestions, ...other.globalQuestions.filter((q) => !qIds.has(q.id))]
   return merged

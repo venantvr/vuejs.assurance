@@ -2,7 +2,7 @@
  * Store principal : dossiers, étapes, questions, historique (annuler/rétablir)
  * et persistance automatique dans le navigateur.
  */
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
 import {
   BUILTIN_CATEGORIES, FALLBACK_CATEGORY,
@@ -38,7 +38,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
   const future = shallowRef([])
 
   let saveTimer = null
-  let restoring = false
+  let restoringDepth = 0
   /** Révision de la base telle que lue ou écrite en dernier par cet onglet. */
   let knownRev = null
   let listenersBound = false
@@ -119,7 +119,7 @@ export const useDossiersStore = defineStore('dossiers', () => {
 
   /** Charge une base (stockée, fusionnée ou historique) dans l'état réactif. */
   function loadIntoState (db) {
-    restoring = true
+    restoringDepth += 1
     dossiers.value = db.dossiers.map((d) => sanitizeDossier(d))
     trash.value = (db.trash || []).map((d) => ({ ...sanitizeDossier(d), deletedAt: d.deletedAt || new Date().toISOString() }))
     activeId.value = db.activeId
@@ -128,7 +128,9 @@ export const useDossiersStore = defineStore('dossiers', () => {
     if (dossiers.value.length && !dossiers.value.some((d) => d.id === activeId.value)) {
       activeId.value = dossiers.value[0].id
     }
-    restoring = false
+    // Les watchers Vue tournent en micro-tâche (flush: 'pre') : on ne relâche
+    // la garde qu'après ce cycle, sinon un rechargement déclencherait une réécriture.
+    nextTick(() => { restoringDepth = Math.max(0, restoringDepth - 1) })
   }
 
   function clearHistory () {
@@ -137,7 +139,6 @@ export const useDossiersStore = defineStore('dossiers', () => {
   }
 
   function schedulePersist () {
-    if (restoring) return
     saveState.value = 'pending'
     clearTimeout(saveTimer)
     saveTimer = setTimeout(persistNow, SAVE_DELAY)
@@ -204,12 +205,16 @@ export const useDossiersStore = defineStore('dossiers', () => {
     try { navigator.storage?.persist?.() } catch { /* best effort */ }
   }
 
-  watch([dossiers, activeId, trash, actors, customCategories], schedulePersist, { deep: true })
+  watch([dossiers, activeId, trash, actors, customCategories], () => {
+    if (restoringDepth > 0) return
+    schedulePersist()
+  }, { deep: true })
 
   // Les champs de synthèse sont liés en v-model : on date la modification ici.
   watch(
     () => (active.value ? [active.value.id, JSON.stringify(active.value.meta)] : null),
     (next, prev) => {
+      if (restoringDepth > 0) return
       if (next && prev && next[0] === prev[0] && next[1] !== prev[1]) touch()
     }
   )
@@ -281,19 +286,26 @@ export const useDossiersStore = defineStore('dossiers', () => {
   }
 
   function init () {
+    const hadRaw = Boolean(readRawDb())
     const { db, preserved } = loadDb()
     preservedKey.value = preserved
     knownRev = preserved ? null : db.rev
+    let needsPersist = !hadRaw || Boolean(preserved)
     if (!db.dossiers.length && !db.trash.length) {
       db.dossiers = [demoDossier()]
       db.activeId = db.dossiers[0].id
+      needsPersist = true
     }
     // au premier lancement, le catalogue est alimenté par les acteurs déjà saisis
     const used = db.dossiers.flatMap((d) => d.steps.flatMap((step) => step.actors))
-    db.actors = sanitizeActors([...(db.actors || []), ...used])
+    const nextActors = sanitizeActors([...(db.actors || []), ...used])
+    if (nextActors.length !== (db.actors || []).length) {
+      db.actors = nextActors
+      needsPersist = true
+    }
     loadIntoState(db)
     bindLifecycle()
-    persistNow()
+    if (needsPersist) persistNow()
   }
 
   /* --------------------------------------------------------------- dossiers */
@@ -697,7 +709,11 @@ export const useDossiersStore = defineStore('dossiers', () => {
       const dossier = sanitizeDossier(raw, fallback)
       if (asCopies || dossiers.value.some((d) => d.id === dossier.id) || trash.value.some((d) => d.id === dossier.id)) {
         dossier.id = uid('dos')
-        dossier.steps.forEach((s) => { s.id = uid('step') })
+        dossier.steps.forEach((s) => {
+          s.id = uid('step')
+          s.attachments.forEach((a) => { a.id = uid('pj') })
+        })
+        dossier.parties.forEach((p) => { p.id = uid('party') })
         dossier.globalQuestions.forEach((q) => { q.id = uid('gq') })
       }
       if (suffix) dossier.name = `${dossier.name} ${suffix}`
@@ -716,16 +732,29 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return JSON.parse(JSON.stringify({ version: 1, ...currentDb() }))
   }
 
+  /** Vrai si la base locale ne contient que le dossier de démo intact (appareil neuf). */
+  function isUntouchedDemo () {
+    if (dossiers.value.length !== 1 || trash.value.length || customCategories.value.length) return false
+    const only = dossiers.value[0]
+    return only.id === 'dos-demo' && only.createdAt === only.updatedAt
+  }
+
   /**
    * Fusionne une base distante (déjà déchiffrée) avec l'état local, selon les
    * mêmes règles que deux onglets : l'union l'emporte, rien n'est perdu.
+   * Sur un appareil neuf (seul le dossier de démo non modifié), on adopte la
+   * base distante telle quelle pour ne pas la polluer avec le dossier de démo.
    * Retourne false si la structure est inconnue.
    */
   function mergeRemoteDb (remote) {
     const normalized = normalizeDb(remote)
     if (!normalized) return false
     commit({ backup: true, label: 'avant fusion de la synchronisation' })
-    loadIntoState(mergeDb(normalized, currentDb()))
+    const remoteHasData = normalized.dossiers.length > 0 || normalized.trash.length > 0
+    const next = isUntouchedDemo() && remoteHasData
+      ? normalized
+      : mergeDb(normalized, currentDb())
+    loadIntoState(next)
     schedulePersist()
     return true
   }

@@ -14,6 +14,7 @@ import { useDossiersStore } from '@/stores/dossiers.js'
 import { useUiStore } from '@/stores/ui.js'
 import { encryptJson, decryptJson } from '@/lib/crypto.js'
 import { pullRemote, pushRemote } from '@/lib/sync.js'
+import { normalizeDb } from '@/lib/storage.js'
 
 const DEBOUNCE_MS = 3000
 const INTERVAL_MS = 60_000
@@ -56,6 +57,7 @@ export function useAutoSync () {
   const configured = () => Boolean(ui.syncToken.trim() && ui.syncPassphrase.trim())
 
   function refreshIdle () {
+    if (running) return
     ui.syncStatus = isHosted() && configured() && ui.syncAuto ? 'idle' : 'off'
   }
 
@@ -82,6 +84,8 @@ export function useAutoSync () {
     if (!force && !ui.syncAuto) return { ok: false, message: 'Synchronisation automatique désactivée' }
     if (running) { again = true; return { ok: true, message: 'Déjà en cours' } }
 
+    clearTimeout(timer)
+    timer = null
     running = true
     lastRun = Date.now()
     ui.syncStatus = 'syncing'
@@ -96,18 +100,25 @@ export function useAutoSync () {
       }
 
       let rev = pulled.rev
+      let remoteSavedAt = pulled.savedAt
+      let remoteFp = null
       if (pulled.envelope && pulled.rev !== ui.syncRev) {
         const remote = await decryptRemote(pulled.envelope)
-        if (!store.mergeRemoteDb(remote)) throw new Error('Structure distante non reconnue')
+        const normalized = normalizeDb(remote)
+        if (!normalized) throw new Error('Structure distante non reconnue')
+        remoteFp = fingerprint(normalized)
+        if (!store.mergeRemoteDb(normalized)) throw new Error('Structure distante non reconnue')
         result = { ok: true, message: `Données distantes fusionnées (révision ${pulled.rev})` }
       }
 
-      // Envoi si la base locale diffère de celle du dernier envoi (ou si le serveur est vide).
+      // Envoi si la base locale diffère de la dernière version connue côté serveur (ou si le serveur est vide).
       for (let attempt = 0; attempt < 3; attempt++) {
         const snapshot = store.exportDb()
         const fp = fingerprint(snapshot)
-        if (fp === ui.syncFp && rev === pulled.rev && (pulled.envelope || rev > 0)) {
-          ui.setSyncState({ rev, at: pulled.savedAt })
+        const matchesRemote = remoteFp !== null && fp === remoteFp
+        const unchangedSinceLastSync = fp === ui.syncFp && rev === pulled.rev && (pulled.envelope || rev > 0)
+        if (matchesRemote || unchangedSinceLastSync) {
+          ui.setSyncState({ rev, at: remoteSavedAt, fp })
           break
         }
         const envelope = await encryptJson(ui.syncPassphrase, snapshot)
@@ -118,11 +129,15 @@ export function useAutoSync () {
           break
         }
         if (res.conflict) {
+          rev = res.rev
+          remoteSavedAt = res.savedAt
           if (res.envelope) {
             const remote = await decryptRemote(res.envelope)
-            if (!store.mergeRemoteDb(remote)) throw new Error('Structure distante non reconnue')
+            const normalized = normalizeDb(remote)
+            if (!normalized) throw new Error('Structure distante non reconnue')
+            remoteFp = fingerprint(normalized)
+            if (!store.mergeRemoteDb(normalized)) throw new Error('Structure distante non reconnue')
           }
-          rev = res.rev
           if (attempt === 2) throw new Error('Écritures concurrentes répétées : nouvel essai à la prochaine synchronisation')
           continue
         }
@@ -161,6 +176,7 @@ export function useAutoSync () {
 
     // Configuration modifiée (jeton, passphrase, interrupteur) : on repart, erreur effacée.
     watch(() => [ui.syncToken, ui.syncPassphrase, ui.syncAuto], () => {
+      if (running) return
       refreshIdle()
       if (ui.syncStatus === 'idle') { ui.syncError = ''; schedule(500) }
     })
