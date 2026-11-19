@@ -56,6 +56,7 @@ export function useAutoSync () {
   const ui = useUiStore()
 
   const configured = () => Boolean(ui.syncToken.trim() && ui.syncPassphrase.trim())
+  const configKey = () => JSON.stringify([ui.syncToken, ui.syncPassphrase, ui.syncAuto])
 
   function refreshIdle () {
     ui.syncStatus = isHosted() && configured() && ui.syncAuto ? 'idle' : 'off'
@@ -97,6 +98,8 @@ export function useAutoSync () {
 
     clearTimeout(timer)
     timer = null
+    const startConfig = configKey()
+    configDirty = false
     running = true
     lastRun = Date.now()
     ui.syncStatus = 'syncing'
@@ -167,7 +170,11 @@ export function useAutoSync () {
       running = false
       const retry = again
       again = false
-      if (configDirty) applyConfigChange()
+      // Ne réagir qu'à un changement survenu PENDANT le cycle (pas à la
+      // micro-tâche différée d'un save() appelé juste avant syncNow).
+      const changedDuringRun = configDirty && configKey() !== startConfig
+      configDirty = false
+      if (changedDuringRun) applyConfigChange()
       else if (retry) schedule(DEBOUNCE_MS)
     }
   }

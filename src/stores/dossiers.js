@@ -285,7 +285,25 @@ export const useDossiersStore = defineStore('dossiers', () => {
     return dossier
   }
 
+  function sameContentAsStored (raw) {
+    if (!raw) return false
+    try {
+      const parsed = JSON.parse(raw)
+      if (parsed?.version !== 1 || !Number.isFinite(parsed.rev)) return false
+      return JSON.stringify({
+        activeId: parsed.activeId,
+        dossiers: parsed.dossiers,
+        trash: parsed.trash,
+        actors: parsed.actors,
+        categories: parsed.categories
+      }) === snapshotState()
+    } catch {
+      return false
+    }
+  }
+
   function init () {
+    const raw = readRawDb()
     const { db, preserved } = loadDb()
     preservedKey.value = preserved
     knownRev = preserved ? null : db.rev
@@ -298,11 +316,10 @@ export const useDossiersStore = defineStore('dossiers', () => {
     db.actors = sanitizeActors([...(db.actors || []), ...used])
     loadIntoState(db)
     bindLifecycle()
-    // Écriture systématique : elle fixe sur disque ce que la lecture a migré
-    // ou complété (ancienne clé, deletedAt manquants, catalogue d'acteurs) et
-    // fait tourner les sauvegardes. L'empreinte de synchronisation ignore la
-    // révision : cette écriture ne provoque aucun envoi distant inutile.
-    persistNow()
+    // N'écrit au démarrage que si la lecture a migré/complété quelque chose :
+    // fixe les migrations sur disque sans réveiller les autres onglets ouverts.
+    if (preserved || !sameContentAsStored(raw)) persistNow()
+    else rotateBackup(raw)
   }
 
   /* --------------------------------------------------------------- dossiers */
